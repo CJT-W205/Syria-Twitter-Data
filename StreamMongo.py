@@ -33,6 +33,8 @@ class CustomStreamListener(tweepy.StreamListener):
     def on_timeout(self):
         return True # Don't kill the stream
 
+track=[u'الدولة_الإسلامية', u'الدولة الاسلامية في العراق والشام', u'داعش‎',
+       u'حملة_المليار_مسلم_لنصرة_الدولة_الإسلامية‎' ,u'جبهة_النصرة']
 
 sapi = tweepy.streaming.Stream(auth, CustomStreamListener(api))
-sapi.filter(track=[u'الدولة_الإسلامية'])
+sapi.filter(track=track)
