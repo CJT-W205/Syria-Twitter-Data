@@ -11,7 +11,7 @@ from tweepy_utils import *
 
 
 FOLLOWING_DIR = 'following'
-MAX_FRIENDS = 10000
+MAX_FOLLOWING = 10000
 FRIENDS_OF_FRIENDS_LIMIT = 10000
 
 
@@ -25,7 +25,7 @@ class FriendCrawler(object):
         conn = pymongo.MongoClient()
         db = conn.network
         self.users = db.user_profiles
-        self.followers = db.user_followers
+        self.following = db.user_following
 
     def crawl(self, user_id, current_depth=0):
         self.log('current depth: %d, max depth: %d' % (current_depth, self.max_depth))
@@ -33,7 +33,7 @@ class FriendCrawler(object):
 
         if current_depth == self.max_depth:
             self.log('out of depth')
-            return self.crawled_list
+            return self.crawled_list  # reached depth limit - exit recursive call
         if user_id in self.crawled_list:
             self.log('Already been here.')
         else:
@@ -47,24 +47,24 @@ class FriendCrawler(object):
             self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
-        friends = self.get_friends_from_mongo(user_id)
-        if not friends:
-            self.log('No data for screen name "%s"' % screen_name)
-            friend_ids = self.get_friends_from_api(user_id, user)
+        following = self.get_following_from_mongo(user_id)
+        if not following:
+            self.log('No data following for screen name "%s"' % screen_name)
+            following_ids = self.get_following_from_api(user_id, user)
         else:
-            friends = friends.get('friends', None)
-            if not friends:
+            following = following.get('following', None)
+            if not following:
                 self.log('ERROR RETRIEVING FRIENDS FOR SCREEN NAME "%s"' % screen_name)
-                return self.crawled_list  # @TODO SOMETHING NOT WORKING HERE
-            friend_ids = [friend['friend_id'] for friend in friends]
-        self.log('Found %d friends for %s' % (len(friend_ids), screen_name))
+                return self.crawled_list  # @TODO Double check - this should never be triggered
+            following_ids = [followed['following_id'] for followed in following]
+        self.log('Found %d following for %s' % (len(following_ids), screen_name))
         cd = current_depth
         if cd+1 < self.max_depth:
-            for fid in friend_ids[:FRIENDS_OF_FRIENDS_LIMIT]:
+            for fid in following_ids[:FRIENDS_OF_FRIENDS_LIMIT]:
                 self.crawled_list = self.crawl(fid, current_depth=cd+1)  # RECURSIVE CALL
 
-        if cd+1 < self.max_depth and len(friend_ids) > FRIENDS_OF_FRIENDS_LIMIT:
-            self.log('Not all friends retrieved for %s.' % screen_name)
+        if cd+1 < self.max_depth and len(following_ids) > FRIENDS_OF_FRIENDS_LIMIT:
+            self.log('Not all following retrieved for %s - limit reached.' % screen_name)
 
         return self.crawled_list
 
@@ -84,7 +84,7 @@ class FriendCrawler(object):
             user = {'_id': user.id,
                     'name': user.name,
                     'screen_name': user.screen_name,
-                    'friends_count': user.friends_count,
+                    'following_count': user.friends_count,
                     'followers_count': user.followers_count,
                     'followers_ids': user.followers_ids(),
                     'location': user.location,
@@ -98,40 +98,40 @@ class FriendCrawler(object):
                     self.log(error[0][0])
         return user
 
-    def get_friends_from_mongo(self, user_id):
-        friends = self.followers.find_one({'_id': user_id})
-        return friends
+    def get_following_from_mongo(self, user_id):
+        following = self.following.find_one({'_id': user_id})
+        return following
 
-    def get_friends_from_api(self, user_id, user):
-        friend_ids = []
-        self.write_friends_to_mongo(user_id, user)
-        self.log('Retrieving friends for user "%s"' % user['screen_name'])
+    def get_following_from_api(self, user_id, user):
+        following_ids = []
+        self.write_following_to_mongo(user_id, user)
+        self.log('Retrieving following list for user "%s"' % user['screen_name'])
         c = tweepy.Cursor(api.friends, id=user['_id'], count=self.cursor_count).items()
 
-        friend_count = 0
+        following_count = 0
         while True:
             try:
-                friend = c.next()
-                friend_ids.append(friend.id)
-                self.update_friend_in_mongo(friend, user_id)
-                friend_count += 1
-                if friend_count >= MAX_FRIENDS:
-                    self.log('Reached max no. of friends for "%s".' % friend.screen_name)
+                followed = c.next()
+                following_ids.append(followed.id)
+                self.update_following_in_mongo(followed, user_id)
+                following_count += 1
+                if following_count >= MAX_FOLLOWING:
+                    self.log('Reached max length of following list for "%s".' % user['screen_name'])
                     break
             except StopIteration:
                 break
-        return friend_ids
+        return following_ids
 
-    def write_friends_to_mongo(self, user_id, user):
+    def write_following_to_mongo(self, user_id, user):
         d = {'_id': user_id,
              'screen_name': user['screen_name']}
-        self.followers.insert(d)
+        self.following.insert(d)
 
-    def update_friend_in_mongo(self, friend, user_id):
-        f = {'friend_id': friend.id,
-             'friend_sname': self.encode_str(friend.screen_name),
-             'friend_name': self.encode_str(friend.name)}
-        self.followers.update({"_id": user_id}, {"$push": {'friends': f}})
+    def update_following_in_mongo(self, followed, user_id):
+        f = {'following_id': followed.id,
+             'following_sname': self.encode_str(followed.screen_name),
+             'following_name': self.encode_str(followed.name)}
+        self.following.update({"_id": user_id}, {"$push": {'following': f}})
 
     def log(self, message):
         if self.verbose:

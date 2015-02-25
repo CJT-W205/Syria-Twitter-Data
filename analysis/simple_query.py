@@ -1,7 +1,11 @@
 import pymongo
 
-db = pymongo.MongoClient().test
-results = db.tweets.find()
+db = pymongo.MongoClient().network
+# results = db.user_followers.find()
+#
+# for user in results:
+#     print user
 
-for tweet in results:
-    print tweet
+# db.connection.drop_database('test')
+# db.connection.drop_database('user_profiles')
+db.connection.drop_database('network')
