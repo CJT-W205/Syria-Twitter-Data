@@ -41,10 +41,10 @@ class FriendCrawler(object):
 
         user = self.get_user_from_mongo(user_id)
         if not user:
-            api_user = self.get_user_from_api(user_id)
-            if not api_user:
-                return self.crawled_list
-            user = self.write_user_to_mongo(api_user)
+            user = self.get_user_from_api(user_id)
+            if not user:
+                return self.crawled_list # Couldn't get user so exit recursive call
+            self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
         friends = self.get_friends_from_mongo(user_id)
@@ -54,14 +54,14 @@ class FriendCrawler(object):
         else:
             friends = friends.get('friends', None)
             if not friends:
-                self.log('Error retrieving friends for screen name "%s"' % screen_name)
+                self.log('ERROR RETRIEVING FRIENDS FOR SCREEN NAME "%s"' % screen_name)
                 return self.crawled_list  # @TODO SOMETHING NOT WORKING HERE
             friend_ids = [friend['friend_id'] for friend in friends]
         self.log('Found %d friends for %s' % (len(friend_ids), screen_name))
         cd = current_depth
         if cd+1 < self.max_depth:
             for fid in friend_ids[:FRIENDS_OF_FRIENDS_LIMIT]:
-                self.crawled_list = self.crawl(fid, current_depth=cd+1)  # recursive call
+                self.crawled_list = self.crawl(fid, current_depth=cd+1)  # RECURSIVE CALL
 
         if cd+1 < self.max_depth and len(friend_ids) > FRIENDS_OF_FRIENDS_LIMIT:
             self.log('Not all friends retrieved for %s.' % screen_name)
@@ -73,17 +73,7 @@ class FriendCrawler(object):
         return user
 
     def write_user_to_mongo(self, user):
-        d = {'_id': user.id,
-             'name': user.name,
-             'screen_name': user.screen_name,
-             'friends_count': user.friends_count,
-             'followers_count': user.followers_count,
-             'followers_ids': user.followers_ids(),
-             'location': user.location,
-             'time_zone': user.time_zone,
-             'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
-        self.users.insert(d)
-        return d
+        self.users.insert(user)
 
     def get_user_from_api(self, user_id):
         user = None
@@ -91,6 +81,15 @@ class FriendCrawler(object):
             user = self.api.get_user(user_id)
             if not getattr(user, 'screen_name', None):
                 return None
+            user = {'_id': user.id,
+                    'name': user.name,
+                    'screen_name': user.screen_name,
+                    'friends_count': user.friends_count,
+                    'followers_count': user.followers_count,
+                    'followers_ids': user.followers_ids(),
+                    'location': user.location,
+                    'time_zone': user.time_zone,
+                    'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
         except tweepy.TweepError, error:
                     if str(error) == 'Not authorized.':
                         self.log('Can''t access user data - not authorized.')
