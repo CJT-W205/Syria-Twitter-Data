@@ -15,12 +15,6 @@ MAX_FRIENDS = 10000
 FRIENDS_OF_FRIENDS_LIMIT = 10000
 
 
-class User:
-    def __init__(self, in_dict):
-        if in_dict:
-            self.__dict__.update(in_dict)
-
-
 class FriendCrawler(object):
     def __init__(self, api, max_depth=1, crawled_list=None, verbose=False, cursor_count=100):
         self.api = api
@@ -33,30 +27,30 @@ class FriendCrawler(object):
         self.users = db.user_profiles
         self.followers = db.user_followers
 
-    def crawl(self, center, current_depth=0):
+    def crawl(self, user_id, current_depth=0):
         self.log('current depth: %d, max depth: %d' % (current_depth, self.max_depth))
         self.log(('crawled list: ', ','.join([str(i) for i in self.crawled_list])))
 
         if current_depth == self.max_depth:
             self.log('out of depth')
             return self.crawled_list
-        if center in self.crawled_list:
+        if user_id in self.crawled_list:
             self.log('Already been here.')
         else:
-            self.crawled_list.append(center)
+            self.crawled_list.append(user_id)
 
-        user = self.get_user_from_mongo(center)
+        user = self.get_user_from_mongo(user_id)
         if not user:
-            user = self.get_user_from_api(center)
-            if not user:
+            api_user = self.get_user_from_api(user_id)
+            if not api_user:
                 return self.crawled_list
-            self.write_user_to_mongo(user)
+            user = self.write_user_to_mongo(api_user)
 
-        screen_name = self.encode_str(user.screen_name)
-        friends = self.get_friends_from_mongo(center)
+        screen_name = self.encode_str(user['screen_name'])
+        friends = self.get_friends_from_mongo(user_id)
         if not friends:
             self.log('No data for screen name "%s"' % screen_name)
-            friend_ids = self.get_friends_from_api(center, user)
+            friend_ids = self.get_friends_from_api(user_id, user)
         else:
             friends = friends.get('friends', None)
             if not friends:
@@ -74,11 +68,8 @@ class FriendCrawler(object):
 
         return self.crawled_list
 
-    def get_user_from_mongo(self, center):
-        user = self.users.find_one({'_id': center})
-        user = User(user)
-        if not getattr(user,'screen_name', None):
-            return None
+    def get_user_from_mongo(self, user_id):
+        user = self.users.find_one({'_id': user_id})
         return user
 
     def write_user_to_mongo(self, user):
@@ -92,12 +83,13 @@ class FriendCrawler(object):
              'time_zone': user.time_zone,
              'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
         self.users.insert(d)
+        return d
 
-    def get_user_from_api(self, center):
+    def get_user_from_api(self, user_id):
         user = None
         try:
-            user = self.api.get_user(center)
-            if not getattr(user,'screen_name', None):
+            user = self.api.get_user(user_id)
+            if not getattr(user, 'screen_name', None):
                 return None
         except tweepy.TweepError, error:
                     if str(error) == 'Not authorized.':
@@ -107,22 +99,22 @@ class FriendCrawler(object):
                     self.log(error[0][0])
         return user
 
-    def get_friends_from_mongo(self, center):
-        friends = self.followers.find_one({'_id': center})
+    def get_friends_from_mongo(self, user_id):
+        friends = self.followers.find_one({'_id': user_id})
         return friends
 
-    def get_friends_from_api(self, center, user):
+    def get_friends_from_api(self, user_id, user):
         friend_ids = []
-        self.write_friends_to_mongo(center, user)
-        self.log('Retrieving friends for user "%s"' % user.screen_name)
-        c = tweepy.Cursor(api.friends, id=user.id, count=self.cursor_count).items()
+        self.write_friends_to_mongo(user_id, user)
+        self.log('Retrieving friends for user "%s"' % user['screen_name'])
+        c = tweepy.Cursor(api.friends, id=user['_id'], count=self.cursor_count).items()
 
         friend_count = 0
         while True:
             try:
                 friend = c.next()
                 friend_ids.append(friend.id)
-                self.update_friend_in_mongo(friend, center)
+                self.update_friend_in_mongo(friend, user_id)
                 friend_count += 1
                 if friend_count >= MAX_FRIENDS:
                     self.log('Reached max no. of friends for "%s".' % friend.screen_name)
@@ -131,16 +123,16 @@ class FriendCrawler(object):
                 break
         return friend_ids
 
-    def write_friends_to_mongo(self, center, user):
-        d = {'_id': center,
-             'screen_name': user.screen_name}
+    def write_friends_to_mongo(self, user_id, user):
+        d = {'_id': user_id,
+             'screen_name': user['screen_name']}
         self.followers.insert(d)
 
-    def update_friend_in_mongo(self, friend, center):
+    def update_friend_in_mongo(self, friend, user_id):
         f = {'friend_id': friend.id,
              'friend_sname': self.encode_str(friend.screen_name),
              'friend_name': self.encode_str(friend.name)}
-        self.followers.update({"_id": center}, {"$push": {'friends': f}})
+        self.followers.update({"_id": user_id}, {"$push": {'friends': f}})
 
     def log(self, message):
         if self.verbose:
