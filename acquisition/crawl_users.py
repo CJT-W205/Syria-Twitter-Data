@@ -43,7 +43,7 @@ class FriendCrawler(object):
             self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
-        followers_ids = self.get_followers_from_mongo(user_id)
+        followers_ids = user['followers_ids']
 
         cd = current_depth
         if cd+1 < self.max_depth:
@@ -85,11 +85,6 @@ class FriendCrawler(object):
                         self.log('User suspended.')
                     self.log(error[0][0])
         return userDict
-
-    def get_followers_from_mongo(self, user_id):
-        user = self.users.find_one({'_id': user_id})
-        followers = user.get('followers_ids', None)
-        return followers
 
     def log(self, message):
         if self.verbose:
