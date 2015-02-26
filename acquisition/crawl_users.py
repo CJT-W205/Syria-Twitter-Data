@@ -72,15 +72,15 @@ class FriendCrawler(object):
             if not getattr(user, 'screen_name', None):
                 return None
             userDict = {'_id': user.id,
-                    'name': user.name,
-                    'screen_name': user.screen_name,
-                    'following_count': user.friends_count,
-                    'followers_count': user.followers_count,
-                    'following_ids': user._api.followers_ids(user_id=user.id),
-                    'followers_ids': user.followers_ids(),
-                    'location': user.location,
-                    'time_zone': user.time_zone,
-                    'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
+                        'name': user.name,
+                        'screen_name': user.screen_name,
+                        'following_count': user.friends_count,
+                        'followers_count': user.followers_count,
+                        'following_ids': user._api.followers_ids(user_id=user.id),
+                        'followers_ids': user.followers_ids(),
+                        'location': user.location,
+                        'time_zone': user.time_zone,
+                        'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
             self.log('%s is following %s others' % (user.screen_name, user.friends_count))
         except tweepy.TweepError, error:
                     if str(error) == 'Not authorized.':
