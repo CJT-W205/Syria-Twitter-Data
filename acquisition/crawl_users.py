@@ -12,7 +12,7 @@ from tweepy_utils import *
 
 FOLLOWING_DIR = 'following'
 MAX_FOLLOWING = 10000
-FRIENDS_OF_FRIENDS_LIMIT = 10000
+FOLLOWERS_OF_FOLLOWERS_LIMIT = 10000
 
 
 class FriendCrawler(object):
@@ -50,10 +50,10 @@ class FriendCrawler(object):
 
         cd = current_depth
         if cd+1 < self.max_depth:
-            for fid in following_ids[:FRIENDS_OF_FRIENDS_LIMIT]:
+            for fid in following_ids[:FOLLOWERS_OF_FOLLOWERS_LIMIT]:
                 self.crawled_list = self.crawl(fid, current_depth=cd+1)  # RECURSIVE CALL
 
-        if cd+1 < self.max_depth and len(following_ids) > FRIENDS_OF_FRIENDS_LIMIT:
+        if cd+1 < self.max_depth and len(following_ids) > FOLLOWERS_OF_FOLLOWERS_LIMIT:
             self.log('Not all following retrieved for %s - limit reached.' % screen_name)
 
         return self.crawled_list
