@@ -10,13 +10,9 @@ import pymongo
 from tweepy_utils import *
 
 
-FOLLOWING_DIR = 'following'
-MAX_FOLLOWING = 10000
-FOLLOWERS_OF_FOLLOWERS_LIMIT = 10000
-
-
 class FriendCrawler(object):
-    def __init__(self, api, max_depth=1, crawled_list=None, verbose=False, cursor_count=100):
+    def __init__(self, api, max_depth=1, crawled_list=None, verbose=False, cursor_count=100,
+                 followers_of_followers_limit=10000):
         self.api = api
         self.verbose = verbose
         self.crawled_list = crawled_list if crawled_list else []
@@ -25,6 +21,7 @@ class FriendCrawler(object):
         conn = pymongo.MongoClient()
         db = conn.network
         self.users = db.user_profiles
+        self.followers_of_followers_limit = followers_of_followers_limit
 
     def crawl(self, user_id, current_depth=0):
         self.log('current depth: %d, max depth: %d' % (current_depth, self.max_depth))
@@ -46,15 +43,15 @@ class FriendCrawler(object):
             self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
-        following_ids = self.get_following_from_mongo(user_id)
+        followers_ids = self.get_followers_from_mongo(user_id)
 
         cd = current_depth
         if cd+1 < self.max_depth:
-            for fid in following_ids[:FOLLOWERS_OF_FOLLOWERS_LIMIT]:
+            for fid in followers_ids[:self.followers_of_followers_limit]:
                 self.crawled_list = self.crawl(fid, current_depth=cd+1)  # RECURSIVE CALL
 
-        if cd+1 < self.max_depth and len(following_ids) > FOLLOWERS_OF_FOLLOWERS_LIMIT:
-            self.log('Not all following retrieved for %s - limit reached.' % screen_name)
+        if cd+1 < self.max_depth and len(followers_ids) > self.followers_of_followers_limit:
+            self.log('Not all followers retrieved for %s - limit reached.' % screen_name)
 
         return self.crawled_list
 
@@ -76,11 +73,11 @@ class FriendCrawler(object):
                         'screen_name': user.screen_name,
                         'following_count': user.friends_count,
                         'followers_count': user.followers_count,
-                        'following_ids': user._api.friends_ids(user_id=user.id),
+                        'followers_ids': user.followers_ids(),
                         'location': user.location,
                         'time_zone': user.time_zone,
                         'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
-            self.log('%s is following %s others' % (user.screen_name, user.friends_count))
+            self.log('%s has %s followers' % (userDict['screen_name'], userDict['followers_count']))
         except tweepy.TweepError, error:
                     if str(error) == 'Not authorized.':
                         self.log('Can''t access user data - not authorized.')
@@ -89,10 +86,10 @@ class FriendCrawler(object):
                     self.log(error[0][0])
         return userDict
 
-    def get_following_from_mongo(self, user_id):
+    def get_followers_from_mongo(self, user_id):
         user = self.users.find_one({'_id': user_id})
-        following = user.get('following_ids', None)
-        return following
+        followers = user.get('followers_ids', None)
+        return followers
 
     def log(self, message):
         if self.verbose:
