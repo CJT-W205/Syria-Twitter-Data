@@ -6,13 +6,14 @@ import datetime
 import sys
 import argparse
 import pymongo
+import random
 
 from tweepy_utils import *
 
 
 class FriendCrawler(object):
     def __init__(self, api, max_depth=1, crawled_list=None, verbose=False, cursor_count=100,
-                 followers_of_followers_limit=10000):
+                 followers_of_followers_limit=100):
         self.api = api
         self.verbose = verbose
         self.crawled_list = crawled_list if crawled_list else []
@@ -30,27 +31,34 @@ class FriendCrawler(object):
         if current_depth == self.max_depth:
             self.log('out of depth')
             return self.crawled_list  # reached depth limit - exit recursive call
+
         if user_id in self.crawled_list:
             self.log('Already been here.')
+            return self.crawled_list
         else:
             self.crawled_list.append(user_id)
 
         user = self.get_user_from_mongo(user_id)
+
         if not user:
             user = self.get_user_from_api(user_id)
+
             if not user:
                 return self.crawled_list  # Couldn't get user so exit recursive call
+
             self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
-        followers_ids = self.get_followers_from_mongo(user_id)
+        relationships_ids = self.get_relationships_from_mongo(user_id)
+        print relationships_ids
 
         cd = current_depth
+
         if cd+1 < self.max_depth:
-            for fid in followers_ids[:self.followers_of_followers_limit]:
+            for fid in relationships_ids[:self.followers_of_followers_limit]:
                 self.crawled_list = self.crawl(fid, current_depth=cd+1)  # RECURSIVE CALL
 
-        if cd+1 < self.max_depth and len(followers_ids) > self.followers_of_followers_limit:
+        if cd+1 < self.max_depth and len(relationships_ids) > self.followers_of_followers_limit:
             self.log('Not all followers retrieved for %s - limit reached.' % screen_name)
 
         return self.crawled_list
@@ -64,32 +72,54 @@ class FriendCrawler(object):
 
     def get_user_from_api(self, user_id):
         userDict = None
+
         try:
             user = self.api.get_user(user_id)
+
             if not getattr(user, 'screen_name', None):
                 return None
+
             userDict = {'_id': user.id,
                         'name': user.name,
                         'screen_name': user.screen_name,
                         'following_count': user.friends_count,
                         'followers_count': user.followers_count,
                         'followers_ids': user.followers_ids(),
+                        'friends_ids': user._api.friends_ids(user_id=user.id),
                         'location': user.location,
                         'time_zone': user.time_zone,
                         'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')}
+
             self.log('%s has %s followers' % (userDict['screen_name'], userDict['followers_count']))
+
         except tweepy.TweepError, error:
+
                     if str(error) == 'Not authorized.':
                         self.log('Can''t access user data - not authorized.')
+
                     if str(error) == 'User has been suspended.':
                         self.log('User suspended.')
+
                     self.log(error[0][0])
+
         return userDict
 
-    def get_followers_from_mongo(self, user_id):
+    def get_relationships_from_mongo(self, user_id):
         user = self.users.find_one({'_id': user_id})
+
+        ratio = 0
+        if user['following_count']>0:
+            ratio = user['followers_count']/user['following_count']
+
+        self.log('following to friend ratio is %d' % (ratio))
+        n = min(50, max(5, ratio))
         followers = user.get('followers_ids', None)
-        return followers
+        friends = user.get('friends_ids', None)
+        relationships = random.sample(followers, n)
+        relationships.extend(random.sample(friends, n))
+
+        return relationships
+
 
     def log(self, message):
         if self.verbose:
@@ -101,7 +131,7 @@ class FriendCrawler(object):
 
 
 if __name__ == '__main__':
-    credentials = load_credentials()
+    credentials = load_credentials(from_file=True)
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
@@ -113,7 +143,7 @@ if __name__ == '__main__':
     user_id = args['user_id']
     depth = int(args['depth'])
 
-    if depth < 1 or depth > 4:
+    if depth < 1 or depth > 3:
         print 'Depth value %d is not valid. Valid range is 1-4.' % depth
         sys.exit('Invalid depth argument.')
 
