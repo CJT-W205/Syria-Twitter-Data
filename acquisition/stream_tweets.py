@@ -13,7 +13,7 @@ class CustomStreamListener(StreamListener):
         self.verbose = verbose
         super(StreamListener, self).__init__()
         conn = pymongo.MongoClient()
-        self.db = conn.test
+        self.db = conn.stream
 
     def on_data(self, tweet):
         self.db.tweets.insert(json.loads(tweet))
