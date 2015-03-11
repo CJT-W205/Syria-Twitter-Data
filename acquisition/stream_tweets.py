@@ -40,7 +40,7 @@ if __name__ == '__main__':
     track = [u'الدولة_الإسلامية#', u'الدولة_الاسلامية_في_العراق_و_الشام#', u'داعش#‎',
              u'جبهة_النصرة#' , '#ISIS', '#ISIL', '#Islamic State', '#Daaesh']
 
-    sapi = streaming.Stream(auth, CustomStreamListener(api))
+    sapi = streaming.Stream(auth, CustomStreamListener(api, verbose=True))
     try:
         sapi.filter(track=track)
     except KeyboardInterrupt:
