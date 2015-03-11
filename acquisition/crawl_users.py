@@ -12,30 +12,32 @@ from tweepy_utils import *
 
 
 class FriendCrawler(object):
-    def __init__(self, api, max_depth=1, crawled_list=None,
-                 parent= None, verbose=False, cursor_count=100,
-                 followers_of_followers_limit=100):
+    def __init__(self, api, centre, max_depth=1, crawled_list=None,
+                 verbose=False, cursor_count=100,
+                 followers_of_followers_limit=500):
 
         self.api = api
         self.verbose = verbose
         self.crawled_list = crawled_list if crawled_list else []
+        self.to_crawl_list = [centre]
         self.max_depth = max_depth
 
         self.cursor_count = cursor_count
         conn = pymongo.MongoClient()
         db = conn.network
 
-#if passed, then fine, then read locally         self.to_crawl_list = to_crawl_list if to_crawl_list else []
         self.users = db.user_profiles
         self.followers_of_followers_limit = followers_of_followers_limit
 
-    def crawl(self, user_id, parent=None, current_depth=0):
+    def crawl(self, parent=None, current_depth=0):
         self.log('current depth: %d, max depth: %d' % (current_depth, self.max_depth))
         self.log(('crawled list: ', ','.join([str(i) for i in self.crawled_list])))
 
         if current_depth == self.max_depth:
             self.log('out of depth')
             return self.crawled_list  # reached depth limit - exit recursive call
+
+        user_id = self.to_crawl_list.pop(0)
 
         if user_id in self.crawled_list:
             self.log('Already been here.')
@@ -51,20 +53,20 @@ class FriendCrawler(object):
             if not user:
                 return self.crawled_list  # Couldn't get user so exit recursive call
 
-            user._parent = parent
+            user._parents.extend(parent)
             self.write_user_to_mongo(user)
 
         screen_name = self.encode_str(user['screen_name'])
         relationships_ids = self.get_relationships_from_mongo(user_id)
 
-        print relationships_ids
+        self.to_crawl_list.extend(relationships_ids)
 
         cd = current_depth
 
-        if cd+1 < self.max_depth:
-            for fid in relationships_ids[:self.followers_of_followers_limit]:
-                self.crawled_list = self.crawl(fid, current_depth=cd+1,
-                                               parent=user.id)  # RECURSIVE CALL
+    #    if len(user._parent) < self.max_depth:
+        while self.to_crawl_list and len(user._parent) < self.max_depth:
+        #    for fid in relationships_ids[:self.followers_of_followers_limit]:
+            self.crawled_list = self.crawl(fid, current_depth=cd+1, parent=user.id)  # RECURSIVE CALL
 
         if cd+1 < self.max_depth and len(relationships_ids) > self.followers_of_followers_limit:
             self.log('Not all followers retrieved for %s - limit reached.' % screen_name)
@@ -97,7 +99,7 @@ class FriendCrawler(object):
                         'location': user.location,
                         'time_zone': user.time_zone,
                         'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')
-                        'parent': user._parent}
+                        'parent': user._parents}
 
             self.log('%s has %s followers' % (userDict['screen_name'], userDict['followers_count']))
 
@@ -122,14 +124,11 @@ class FriendCrawler(object):
             ratio = user['followers_count']/user['following_count']
 
         self.log('follower to friend ratio is %d' % (ratio))
-        n = min(100 , max(10, ratio))
+        n = min(500 , max(10, ratio))
 
         followers = user.get('followers_ids', None)
         friends = user.get('friends_ids', None)
-
-        relationships = random.sample(followers, min(n, user['followers_count']))
-        relationships.extend(random.sample(friends, min(n,user['following_count'])))
-
+        relationships = random.sample(friends, min(n, user['following_count']))
         return relationships
 
 
