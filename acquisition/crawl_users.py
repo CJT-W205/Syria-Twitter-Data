@@ -14,7 +14,7 @@ from tweepy_utils import *
 class FriendCrawler(object):
     def __init__(self, api, max_depth=1, crawled=None,
                  verbose=False, cursor_count=100,
-                 followers_of_followers_limit=500):
+                 followers_of_followers_limit=200):
 
         self.api = api
         self.verbose = verbose
@@ -118,7 +118,7 @@ class FriendCrawler(object):
 
     def get_relationships_from_mongo(self, user_id):
         user = self.users.find_one({'_id': user_id})
-        n = int(user['following_count']**0.7)
+        n = min(400, int(user['following_count']**0.9))
         friends = user.get('friends_ids', None)
         relationships = random.sample(friends, n)
 
@@ -141,10 +141,13 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument("-u", "--user_id", required=True, type=int, help="User ID of twitter user")
     ap.add_argument("-d", "--depth", required=True, type=int, help="How far to follow user network")
+    ap.add_argument("-m", "--max_users", required=True, type=int, help="Max # users to crawl")
+
     args = vars(ap.parse_args())
 
     user_id = args['user_id']
     depth = int(args['depth'])
+    max_users = int(args['max_users'])
 
     if depth < 1 or depth > 3:
         print 'Depth value %d is not valid. Valid range is 1-4.' % depth
@@ -153,7 +156,7 @@ if __name__ == '__main__':
     print 'Max Depth: %d' % depth
 
     crawler = FriendCrawler(api, max_depth=depth, verbose=True)
-    graph = crawler.crawl(user_id, max_users=2000)
+    graph = crawler.crawl(user_id, max_users)
 
     with open('twitter_user_network.txt', 'w') as outfile:
         json.dump(graph, outfile)
