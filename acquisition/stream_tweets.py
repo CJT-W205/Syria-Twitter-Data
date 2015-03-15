@@ -45,7 +45,7 @@ if __name__ == '__main__':
     ap.add_argument("-v", "--verbose", required=False, type=bool, default=False, help="Set verbose output")
     args = vars(ap.parse_args())
     verbose = args['verbose']
-
+    print 'Running streamer, verbose = %s' % verbose
     sapi = streaming.Stream(auth, CustomStreamListener(api, verbose=verbose))
     try:
         sapi.filter(track=track)
