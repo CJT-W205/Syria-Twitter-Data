@@ -12,25 +12,20 @@ from tweepy_utils import *
 
 
 class FriendCrawler(object):
-    def __init__(self, api, max_depth=1, crawled=None,
-                 verbose=False, cursor_count=100,
-                 followers_of_followers_limit=200):
-
+    def __init__(self, api, max_depth=1, verbose=False, cursor_count=100, followers_of_followers_limit=200):
         self.api = api
         self.verbose = verbose
         self.crawled = []
         self.max_depth = max_depth
-
         self.cursor_count = cursor_count
         conn = pymongo.MongoClient()
         db = conn.network
-
         self.users = db.user_profiles
         self.followers_of_followers_limit = followers_of_followers_limit
+        self.tocrawl = []
 
     def crawl(self, seed, max_users=100):
         self.tocrawl = [seed]
-        root = seed
         depth = [0]
         graph = {}
 
@@ -62,7 +57,7 @@ class FriendCrawler(object):
                 self.crawled.append(user_id)
 
             self.log('crawled %s and crawled list is %d users' % (user['screen_name'],len(self.crawled)))
-            self.log('to crawl list has %s users at depth %d' % (len(self.tocrawl) ,d))
+            self.log('to crawl list has %s users at depth %d' % (len(self.tocrawl), d))
 
         return graph
 
@@ -87,7 +82,7 @@ class FriendCrawler(object):
                         'screen_name': user.screen_name,
                         'following_count': user.friends_count,
                         'followers_count': user.followers_count,
-                        'friends_ids': user._api.friends_ids(user_id=user.id),
+                        'following_ids': user._api.friends_ids(user_id=user.id),
                         'location': user.location,
                         'time_zone': user.time_zone,
                         'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')
@@ -119,7 +114,7 @@ class FriendCrawler(object):
     def get_relationships_from_mongo(self, user_id):
         user = self.users.find_one({'_id': user_id})
         n = min(400, int(user['following_count']**0.9))
-        friends = user.get('friends_ids', None)
+        friends = user.get('following_ids', None)
         relationships = random.sample(friends, n)
 
         return relationships
@@ -134,7 +129,7 @@ class FriendCrawler(object):
 
 
 if __name__ == '__main__':
-    credentials = load_credentials(from_file=True)
+    credentials = load_credentials(from_file=True, path='charlie_credentials.json')
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
