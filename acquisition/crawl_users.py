@@ -24,8 +24,10 @@ class FriendCrawler(object):
         self.cursor_count = cursor_count
         conn = pymongo.MongoClient()
         db = conn.network
-
         self.users = db.user_profiles
+        self.tocrawl = db.tocrawl
+        self.crawled = db.crawled
+        self.graph   = db.graph
         self.followers_of_followers_limit = followers_of_followers_limit
 
     def crawl(self, seed, max_users=100):
@@ -53,13 +55,18 @@ class FriendCrawler(object):
                 relationships_ids = self.get_relationships_from_mongo(user_id)
                 graph[user_id] = relationships_ids
 
+
                 if d < self.max_depth:
                     cnt = self.union(relationships_ids)
+                    with open('tocrawl.txt', 'w+') as tocrawltxt:
+                        tocrawltxt.writelines(str(self.tocrawl))
 
                     for i in range(cnt):
                         depth.append(d+1)
 
                 self.crawled.append(user_id)
+                with open('crawled.txt', 'w+') as crawltxt:
+                    crawltxt.writelines(str(self.crawled))
 
             self.log('crawled %s and crawled list is %d users' % (user['screen_name'],len(self.crawled)))
             self.log('to crawl list has %s users at depth %d' % (len(self.tocrawl) ,d))
@@ -82,16 +89,17 @@ class FriendCrawler(object):
             if not getattr(user, 'screen_name', None):
                 return None
 
-            userDict = {'_id': user.id,
+           userDict = {'_id': user.id,
                         'name': user.name,
                         'screen_name': user.screen_name,
                         'following_count': user.friends_count,
                         'followers_count': user.followers_count,
-                        'friends_ids': user._api.friends_ids(user_id=user.id),
+                        'following_ids': user._api.friends_ids(user_id=user.id),
                         'location': user.location,
                         'time_zone': user.time_zone,
                         'created_at': datetime.datetime.strftime(user.created_at, '%Y-%h-%m %H:%M')
                         }
+
 
             self.log('%s has %s friends' % (userDict['screen_name'], userDict['following_count']))
 
