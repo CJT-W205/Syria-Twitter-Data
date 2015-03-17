@@ -21,9 +21,6 @@ class FriendCrawler(object):
         conn = pymongo.MongoClient()
         db = conn.network
         self.users = db.user_profiles
-        self.tocrawl = db.tocrawl
-        self.crawled = db.crawled
-        self.graph   = db.graph
         self.followers_of_followers_limit = followers_of_followers_limit
         self.tocrawl = []
 
@@ -50,7 +47,9 @@ class FriendCrawler(object):
 
                 relationships_ids = self.get_relationships_from_mongo(user_id)
                 graph[user_id] = relationships_ids
-
+                
+                with open('twitter_user_network_tmp.txt', 'w') as outfile:
+                    json.dump(graph, outfile)
 
                 if d < self.max_depth:
                     cnt = self.union(relationships_ids)
@@ -85,7 +84,7 @@ class FriendCrawler(object):
             if not getattr(user, 'screen_name', None):
                 return None
 
-           userDict = {'_id': user.id,
+            userDict = {'_id': user.id,
                         'name': user.name,
                         'screen_name': user.screen_name,
                         'following_count': user.friends_count,
@@ -124,7 +123,10 @@ class FriendCrawler(object):
         user = self.users.find_one({'_id': user_id})
         n = min(400, int(user['following_count']**0.9))
         friends = user.get('following_ids', None)
-        relationships = random.sample(friends, n)
+        try:
+            relationships = random.sample(friends, n)
+        except:
+            relationships = []
 
         return relationships
 
