@@ -39,14 +39,10 @@ def load_credentials(from_file=False, path='credentials.json'):
                 'access_token_secret': os.environ['TW_AT_SECRET']}
 
 
-def tweepy_auth(credentials, user=False):
-    if user:
-        auth = OAuthHandler(credentials['consumer_key'], credentials['consumer_secret'])
-        auth.set_access_token(credentials['access_token'], credentials['access_token_secret'])
-        return auth
-    else:
-        return AppAuthHandler(credentials['consumer_key'], credentials['consumer_secret'])
-
+def tweepy_auth(credentials):
+    auth = OAuthHandler(credentials['consumer_key'], credentials['consumer_secret'])
+    auth.set_access_token(credentials['access_token'], credentials['access_token_secret'])
+    return auth
 
 def tweepy_api(auth):
     api = API(auth_handler=auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)

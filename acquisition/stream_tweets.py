@@ -5,6 +5,7 @@ import pymongo
 from tweepy_utils import load_credentials, tweepy_auth, tweepy_api
 from tweepy import streaming, StreamListener
 import json
+import argparse
 
 
 class CustomStreamListener(StreamListener):
@@ -37,10 +38,15 @@ if __name__ == '__main__':
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
-    track = [u'الدولة_الإسلامية', u'الدولة الاسلامية في العراق والشام', u'داعش‎',
-             u'حملة_المليار_مسلم_لنصرة_الدولة_الإسلامية‎' ,u'جبهة_النصرة']
+    track = [u'الدولة_الإسلامية#', u'الدولة_الاسلامية_في_العراق_و_الشام#', u'داعش#‎',
+             u'جبهة_النصرة#' , '#ISIS', '#ISIL', '#Islamic State', '#Daaesh']
 
-    sapi = streaming.Stream(auth, CustomStreamListener(api))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-v", "--verbose", required=False, type=bool, default=False, help="Set verbose output")
+    args = vars(ap.parse_args())
+    verbose = args['verbose']
+    print 'Running streamer, verbose = %s' % verbose
+    sapi = streaming.Stream(auth, CustomStreamListener(api, verbose=verbose))
     try:
         sapi.filter(track=track)
     except KeyboardInterrupt:
