@@ -30,15 +30,20 @@ class timelineCrawler(object):
 
         for user in user_list:
 
-            if not self.get_timeline_from_mongo(user['_id']):
-                user_timeline = self.get_timeline_from_api(user['_id'])
+	    try:
+            	if not self.get_timeline_from_mongo(user['_id']):
+                    user_timeline = self.get_timeline_from_api(user['_id'])
 
-                if not user_timeline:
-                    continue
+                    if not user_timeline:
+                        continue
 
-                self.write_timeline_to_mongo(user_timeline)
+                    self.write_timeline_to_mongo(user_timeline)
+ 
+            except Exception, e:
+                self.log(e)
+                continue
 
-        print 'Done'
+        print 'Done!!'
 
 
     def get_timeline_from_mongo(self, user_id):
@@ -58,13 +63,15 @@ class timelineCrawler(object):
                                         id=user_id,
                                         count=100
                                         ).items(self.count):
-                print 'got status'
+
                 tweetsTimeline.append(status._json)
 
             userTimeline = {'_id': user_id,
                             'timeline': tweetsTimeline,
                             'suspended': False,
                             }
+
+            self.log('got status for user_id %d' % (user_id))
 
         except tweepy.TweepError, error:
 
@@ -92,7 +99,7 @@ class timelineCrawler(object):
 
 
 if __name__ == '__main__':
-    credentials = load_credentials(from_file=True, path='charlie_credentials.json')
+    credentials = load_credentials(from_file=True, path='/home/cloofa/credentials_tom.json')
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
     timelines = timelineCrawler(api)
