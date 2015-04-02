@@ -38,8 +38,8 @@ if __name__ == '__main__':
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
-    track = [u'الدولة_الإسلامية#', u'الدولة_الاسلامية_في_العراق_و_الشام#', u'داعش#‎',
-             u'جبهة_النصرة#' , '#ISIS', '#ISIL', '#Islamic State', '#Daaesh']
+    track = [u'دولة_الخلافة#',u'الدولة_الإسلامية#',u'داعش#‎',
+             u'جبهة_النصرة#',u'ولاية_الانبار#', '#ISIS', '#ISIL', '#IslamicState']
 
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--verbose", required=False, type=bool, default=False, help="Set verbose output")
