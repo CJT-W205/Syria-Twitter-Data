@@ -20,30 +20,33 @@ class timelineCrawler(object):
         self.users = db.user_profiles
         self.timelines = db.timelines
 
-    def crawl(self):
-        user_list = []
+    def crawl(self, user_list_ids=None):
+        if not user_list_ids:
+            user_list = []
 
-        for user in self.users.find():
-            user_list.append(user)
+            for user in self.users.find():
+                user_list.append(user)
 
-        user_list = sorted(user_list, key=lambda x:x['followers_count'], reverse=True)
+            user_list = sorted(user_list, key=lambda x:x['followers_count'], reverse=True)
+            user_list_ids = [user['_id'] for user in user_list]
 
-        for user in user_list:
+        print len(user_list_ids)
 
-	    try:
-            	if not self.get_timeline_from_mongo(user['_id']):
-                    user_timeline = self.get_timeline_from_api(user['_id'])
+        for user in user_list_ids:
+            try:
+            	if not self.get_timeline_from_mongo(user):
+                    user_timeline = self.get_timeline_from_api(user)
 
                     if not user_timeline:
                         continue
 
                     self.write_timeline_to_mongo(user_timeline)
- 
+
             except Exception, e:
                 self.log(e)
                 continue
 
-        print 'Done!!'
+        print 'Done!!!'
 
 
     def get_timeline_from_mongo(self, user_id):
@@ -99,8 +102,21 @@ class timelineCrawler(object):
 
 
 if __name__ == '__main__':
-    credentials = load_credentials(from_file=True, path='/home/cloofa/credentials_tom.json')
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-f", "--read_from_file", required=False, type=int, help="read from file")
+    args = vars(ap.parse_args())
+
+    credentials = load_credentials(from_file=True, path='credentials.json')#/home/cloofa/credentials_tom.json')
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
+
     timelines = timelineCrawler(api)
-    timelines.crawl()
+    user_list=None
+
+    if args['read_from_file']==1:
+        user_list  = open('tocrawl.txt')
+        user_list = [int(val) for val in
+                   user_list.read().strip('[').strip(']').strip('  ').split(',')]
+
+    timelines.crawl(user_list)
