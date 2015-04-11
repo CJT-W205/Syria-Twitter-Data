@@ -14,7 +14,7 @@ entities = db.user_entities
 content = db.content_analysis
 
 def insert_attributes_to_mongo(user_id, tags, mentions, retweets, replies):
-
+#    if not entities.find_one({'_id': user_doc['_id']}):
     doc = {
 
               '_id':user_id,
@@ -23,15 +23,18 @@ def insert_attributes_to_mongo(user_id, tags, mentions, retweets, replies):
               'retweets': count_list(retweets),
               'replies': count_list(replies)
 
-          }
+      }
+
 
     link.insert(doc)
 
 
 def insert_user_to_mongo(user_doc):
+#    if not entities.find_one({'_id': user_doc['_id']}):
     entities.insert(user_doc)
 
 def insert_text_to_mongo(user_id, text):
+
     doc = {
 
               '_id':user_id,
@@ -39,6 +42,7 @@ def insert_text_to_mongo(user_id, text):
 
           }
 
+#    if not content.find_one({'_id': doc['_id']}):
     content.insert(doc)
 
 
@@ -78,8 +82,15 @@ def count_list(l1):
     counts = Counter(l1)
     return zip(counts.keys(), counts.values())
 
+n = timelines.count()
+c = 0
 
 for tl in timelines.find():
+    c+=1
+    if c % 100 == 0:
+        print 'there are %d processed timelines and %d left' %(c, n-c)
+
+    tweet, user_doc = None, None
     tags, mentions, retweets, text, replies= [], [], [], [], []
 
     for tweet in tl['timeline']:
@@ -94,13 +105,15 @@ for tl in timelines.find():
         for entry in tweet['entities']['user_mentions']:
             mentions.append(entry['id'])
 
-        replies.append(tweet['in_reply_to_user_id'])
+        if tweet['in_reply_to_user_id']:
+            replies.append(tweet['in_reply_to_user_id'])
 
         if tweet.has_key('retweeted_status'):
             retweets.append(tweet['retweeted_status']['user']['id'])
 
     if tweet:
         user_doc = process_user(tweet['user'])
+        print user_doc['_id']
 
         insert_attributes_to_mongo(tl['_id'], tags, mentions, retweets, replies)
 
