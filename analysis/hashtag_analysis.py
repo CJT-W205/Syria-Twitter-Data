@@ -87,44 +87,47 @@ c = 0
 
 for tl in timelines.find():
     c+=1
-
     if c % 100 == 0:
         print 'there are %d processed timelines and %d left' %(c, n-c)
 
     tweet, user_doc = None, None
     tags, mentions, retweets, text, replies= [], [], [], [], []
 
-    for tweet in tl['timeline']:
+    if len(tl['timeline'])>0:
+        tweet = tl['timeline'][0]
 
-        doc = process_tweet(tweet)
-        text.append(doc)
+        if not entities.find_one({'_id': tweet['user']['id']}):
 
-        for entry in tweet['entities']['hashtags']:
-            hashtag = entry['text']
-            tags.append(hashtag)
+            for tweet in tl['timeline']:
 
-        for entry in tweet['entities']['user_mentions']:
-            mentions.append(entry['id'])
+                doc = process_tweet(tweet)
+                text.append(doc)
 
-        if tweet['in_reply_to_user_id']:
-            replies.append(tweet['in_reply_to_user_id'])
+                for entry in tweet['entities']['hashtags']:
+                    hashtag = entry['text']
+                    tags.append(hashtag)
 
-        if tweet.has_key('retweeted_status'):
-            retweets.append(tweet['retweeted_status']['user']['id'])
+                for entry in tweet['entities']['user_mentions']:
+                    mentions.append(entry['id'])
 
-    if tweet:
-        user_doc = process_user(tweet['user'])
+                if tweet['in_reply_to_user_id']:
+                    replies.append(tweet['in_reply_to_user_id'])
 
-        insert_attributes_to_mongo(tl['_id'], tags, mentions, retweets, replies)
+                if tweet.has_key('retweeted_status'):
+                    retweets.append(tweet['retweeted_status']['user']['id'])
 
-        insert_user_to_mongo(user_doc)
+            user_doc = process_user(tweet['user'])
 
-        insert_text_to_mongo(tl['_id'], text)
+            insert_attributes_to_mongo(tl['_id'], tags, mentions, retweets, replies)
+
+            insert_user_to_mongo(user_doc)
+
+            insert_text_to_mongo(tl['_id'], text)
 
 
 
 
-#pro = [u'دولة_الخلافة#',u'الدولة_الإسلامية#',\
-#       u'ولاية_الانبار#','الدولة_الاسلامية_في_العراق_و_الشام#']
+#pro = [u'دولة_الخلافة#',u'الدولة_الإسلامية#',u'ولاية_الانبار#','الدولة_الاسلامية_في_العراق_و_الشام#']
+
 
 #ati = [u'دواعش#',u'داعش#‎',u'داعشي#',]
