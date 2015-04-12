@@ -87,6 +87,7 @@ c = 0
 
 for tl in timelines.find():
     c+=1
+
     if c % 100 == 0:
         print 'there are %d processed timelines and %d left' %(c, n-c)
 
@@ -113,7 +114,6 @@ for tl in timelines.find():
 
     if tweet:
         user_doc = process_user(tweet['user'])
-        print user_doc['_id']
 
         insert_attributes_to_mongo(tl['_id'], tags, mentions, retweets, replies)
 
