@@ -1,53 +1,68 @@
-"""
-This is a placeholder for our eventual application API, currently just based on a flask+d3 Hello World project.
-"""
+from flask import Flask
+from flask.ext.restful import Api, Resource, reqparse
+from flask.ext.runner import Runner
 import json
-import flask
-import numpy as np
+
+app = Flask(__name__)
+runner = Runner(app)
+api = Api(app)
+
+# Enable CORS
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    return response
 
 
-app = flask.Flask(__name__)
+class Graph(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument('clusters', type=list, location='json')
+    with open('miserables.json') as f:
+        data = json.load(f)
+    nodes = data['nodes']
+    links = data['links']
+
+    def get(self):
+        groups = set()
+        for node in self.nodes:
+            groups.add(node['group'])
+        return {'groups': list(groups)}  # Returns the available groups
+
+    def put(self):
+        args = self.parser.parse_args()
+        groups = args['clusters']
+        filtered_nodes = []
+        filtered_links = []
+        translate = {}
+        ids = set()
+        nodes = self.nodes[:]
+        for i, node in enumerate(nodes):
+            if node['group'] in groups:
+                filtered_nodes.append(node)
+                translate[i] = (len(filtered_nodes)-1)  # to translate the current array references to new ones
+                ids.add(i)
+
+        links = self.links[:]
+        for link in links:
+            if link['source'] in ids and link['target'] in ids:
+                link['source'] = translate[link['source']]  # translate the array references
+                link['target'] = translate[link['target']]
+                filtered_links.append(link)
+
+        response = {'data': {
+            'nodes': filtered_nodes,
+            'links': filtered_links
+        }}
+        return response  # Returns the filtered graph data
 
 
-@app.route("/")
-def index():
-    """
-    When you request the root path, you'll get the index.html template.
-
-    """
-    return flask.render_template("index.html")
 
 
-@app.route("/data")
-@app.route("/data/<int:ndata>")
-def data(ndata=100):
-    """
-    On request, this returns a list of ``ndata`` randomly made data points.
-
-    :param ndata: (optional)
-        The number of data points to return.
-
-    :returns data:
-        A JSON string of ``ndata`` data points.
-
-    """
-    x = 10 * np.random.rand(ndata) - 5
-    y = 0.5 * x + 0.5 * np.random.randn(ndata)
-    A = 10. ** np.random.rand(ndata)
-    c = np.random.rand(ndata)
-    return json.dumps([{"_id": i, "x": x[i], "y": y[i], "area": A[i],
-        "color": c[i]}
-        for i in range(ndata)])
+# API ROUTING
+api.add_resource(Graph, '/graph')
 
 
 if __name__ == "__main__":
-    import os
-
-    port = 8000
-
-    # Open a web browser pointing at the app.
-    os.system("open http://localhost:{0}".format(port))
-
-    # Set up the development server on port 8000.
-    app.debug = True
-    app.run(port=port)
+    runner.run()
