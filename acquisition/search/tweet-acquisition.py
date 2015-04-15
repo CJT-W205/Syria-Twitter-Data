@@ -123,6 +123,7 @@ def string_to_date(date_string):
 def date_to_string(date):
     return date.strftime("%Y-%m-%d")
 
+
 def format_json(o):
     return json.dumps(o, indent=4, separators=(',', ': '))
 
@@ -145,22 +146,25 @@ def hashtags():
     return hashtags
 
 
-def acquire(start_date, end_date, queries=hashtags()):
+def acquire(start_date, end_date, recover_index=0, queries=hashtags()):
 
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
     one_day = datetime.timedelta(days=1)
+    start_index = recover_index
     try:
         for since_date in date_partition(start_date, end_date):
             since = date_to_string(since_date)
             until = date_to_string(since_date + one_day)
-            for query_index in range(len(queries)):
+            for query_index in range(start_index, len(queries)):
+                start_index = 0
                 query = convert_to_utf8_str(queries[query_index])
                 basename = "tweet_%s_%s" % (query_index, since)
                 serializer = TweetSerializer(basename)
                 try:
-                    print "q=\"%s\", since=%s, until=%s" % (query, since, until)
+                    print "track_index=%d, q=\"%s\", since=%s, until=%s" % \
+                        (query_index, query, since, until)
                     count = 0
                     for tweet in tweepy_query(api, query, since, until):
                         serializer.write(tweet)
@@ -175,7 +179,7 @@ def acquire(start_date, end_date, queries=hashtags()):
 
 
 def usage():
-    print "usage %s start-date [end-date]" % sys.argv[0]
+    print "usage %s start-date [end-date, [recover_index]]" % sys.argv[0]
     print "  start-date, end-date:  YYYY-mm-dd, e.g. \"2015-02-01\""
 
 
@@ -190,7 +194,7 @@ def usage_credentials():
 
 if __name__ == "__main__":
     argc = len(sys.argv)
-    if argc < 2 or argc > 3:
+    if argc < 2 or argc > 4:
         usage()
         exit(-1)
 
@@ -201,18 +205,22 @@ if __name__ == "__main__":
         usage()
         exit(-1)
 
-    if argc == 3:
+    if argc == 2:
+        end_date = start_date
+        recover_index = 0
+    else:
         end_date = string_to_date(sys.argv[2])
         if not end_date:
             usage()
             exit(-1)
-    else:
-        end_date = start_date
+        if argc == 4:
+            recover_index = int(sys.argv[3])
+        else:
+            recover_index = 0
 
     credentials = load_credentials()
     if not credentials:
         usage_credentials()
         exit(-1)
 
-    acquire(start_date, end_date)
-
+    acquire(start_date, end_date, recover_index)
