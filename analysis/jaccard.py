@@ -1,6 +1,12 @@
 from itertools import combinations
+from operator import itemgetter
+from pyspark import SparkContext, SparkConf
 import numpy as np
 import pymongo
+import sys
+
+conf = SparkConf().setAppName('jaccard.py').setMaster('local')
+sc = SparkContext(conf=conf)
 
 conn = pymongo.MongoClient()
 link = conn.network.link_analysis
@@ -65,4 +71,4 @@ jaccard_sim = pairwise_users.map(lambda x: jaccardSim(x[0],x[1])).map(
                                  lambda x: keyOnFirstUser(x[0],x[1])).groupByKey().map(
                                  lambda x: sortDistances(x[0], list(x[1])))
 
-jaccard_sim.saveAsTextFile('jaccard_sim_hashtags.txt')
+jaccard_sim.saveAsTextFile('jaccard_sim_hashtags')
