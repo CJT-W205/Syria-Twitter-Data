@@ -6,6 +6,7 @@ __author__ = 'tkunicki'
 
 import datetime
 import json
+import os
 import sys
 import tweepy
 import urllib
@@ -42,8 +43,9 @@ class TweetSerializer:
         self.tweet_count += 1
 
     def __write_first(self, tweet):
-        path = "%s.%s.json" % (self.basename, self.chunk_count)
-        self.chunk_count += 1
+        path = self.__next_partition()
+        while os.path.isfile(path):
+            path = self.__next_partition()
         self.out = open(path, "w")
         self.out.write("[\n")
         self.__write(tweet)
@@ -54,6 +56,11 @@ class TweetSerializer:
         self.__write(tweet)
         if self.tweet_count % self.chunk_size == 0:
             self.__chunk()
+
+    def __next_partition(self):
+        path = "%s.%s.json" % (self.basename, self.chunk_count)
+        self.chunk_count += 1
+        return path
 
 
 def datetime_partition(start, end, duration):
@@ -91,11 +98,11 @@ def tweepy_api(auth):
     return api
 
 
-def tweepy_query(api, q, since=None, until=None):
+def tweepy_query(api, q, since=None, until=None, since_id=None):
     return tweepy.Cursor(
         api.search,
         q=urllib.quote_plus(q),
-        since=since, until=until,
+        since=since, until=until, since_id=since_id,
         count=100).items()
 
 
@@ -128,8 +135,8 @@ def format_json(o):
     return json.dumps(o, indent=4, separators=(',', ': '))
 
 
-def hashtags():
-    hashtags = []
+def default_queries():
+    queries = []
     track = [u'دولة_الخلافة',
              u'الدولة_الإسلامية',
              u'داعش',
@@ -139,41 +146,68 @@ def hashtags():
              '#ISIL',
              '#IslamicState']
     for string in track[:-3]:
-        hashtags.append(string + '#')
-        hashtags.append('#' + string)
+        queries.append(string + '#')
+        queries.append('#' + string)
     for string in track[-3:]:
-        hashtags.append(string)
-    return hashtags
+        queries.append(string)
+    return queries
 
 
-def acquire(start_date, end_date, recover_index=0, queries=hashtags()):
+def acquire(request):
 
     auth = tweepy_auth(credentials)
     api = tweepy_api(auth)
 
+    start = request['start_date']
+    end = request['end_date']
+    if 'start_index' not in request:
+        start_index = 0
+    else:
+        start_index = int(request['start_index'])
+
+    if 'queries' not in request:
+        queries = default_queries()
+    else:
+        queries = request['queries']
+
+    if 'since_id' not in request:
+        since_id = None
+    else:
+        since_id = request['since_id']
+
     one_day = datetime.timedelta(days=1)
-    start_index = recover_index
     try:
-        for since_date in date_partition(start_date, end_date):
+        for since_date in date_partition(
+                string_to_date(start), string_to_date(end)):
             since = date_to_string(since_date)
             until = date_to_string(since_date + one_day)
+            request['start_date'] = since
             for query_index in range(start_index, len(queries)):
                 start_index = 0
+                request['start_index'] = query_index
                 query = convert_to_utf8_str(queries[query_index])
                 basename = "tweet_%s_%s" % (query_index, since)
                 serializer = TweetSerializer(basename)
                 try:
-                    print "track_index=%d, q=\"%s\", since=%s, until=%s" % \
-                        (query_index, query, since, until)
+                    print "track_index=%d, q=\"%s\", since=%s, until=%s, since_id=%s" % \
+                        (query_index, query, since, until, since_id)
                     count = 0
-                    for tweet in tweepy_query(api, query, since, until):
+                    for tweet in tweepy_query(api, query, since, until, since_id):
                         serializer.write(tweet)
+                        request['since_id'] = tweet._json['id']
                         count += 1
+                    since_id = None
                     print "  %s results" % count
+                except:
+                    with open("request.json", "w") as request_out:
+                        json.dump(request, request_out)
+                    raise
                 finally:
                     # allows for cleanup on interrupt
                     if serializer:
                         serializer.close()
+                request.pop('since_id', None)
+            request.pop('start_index', None)
     except KeyboardInterrupt:
         print "Interrupt caught, exiting:..."
 
@@ -192,35 +226,42 @@ def usage_credentials():
                        'access_token_secret': "XXX"})
 
 
-if __name__ == "__main__":
+def parseCLI():
     argc = len(sys.argv)
-    if argc < 2 or argc > 4:
+    if argc < 2 or argc > 3:
         usage()
         exit(-1)
-
-    # not much error checking we can do here...
-    # q = sys.argv[1]
-    start_date = string_to_date(sys.argv[1])
+    start_date = sys.argv[1]
     if not start_date:
         usage()
         exit(-1)
-
     if argc == 2:
         end_date = start_date
-        recover_index = 0
     else:
-        end_date = string_to_date(sys.argv[2])
+        end_date = sys.argv[2]
         if not end_date:
             usage()
-            exit(-1)
-        if argc == 4:
-            recover_index = int(sys.argv[3])
-        else:
-            recover_index = 0
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "queries": default_queries()
+    }
+
+
+if __name__ == "__main__":
+
+    if os.path.isfile("request.json"):
+        with open("request.json", "r") as request_in:
+            request = json.load(request_in)
+    else:
+        request = parseCLI()
 
     credentials = load_credentials()
     if not credentials:
         usage_credentials()
         exit(-1)
 
-    acquire(start_date, end_date, recover_index)
+    if 'queries' not in request:
+        request['queries'] = default_queries()
+
+    acquire(request)
