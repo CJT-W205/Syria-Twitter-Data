@@ -1,0 +1,10 @@
+name: Spark Cluster Deployment
+location: jclouds:softlayer:sjc01
+services:
+- type: io.cloudsoft.spark.SparkCluster
+  initialSize: 3
+  brooklyn.config:
+    provisioning.properties:
+      minRam: 8192mb
+      minCores: 4
+      minDisk: 100gb
