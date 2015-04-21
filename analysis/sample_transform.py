@@ -21,8 +21,8 @@ for node in old_nodes:
         'x': random.randint(0, 10000),
         'y': random.randint(0, 10000),
         'size': 0.1,
-        'label': 'screen name: %s | isis group: %s | following count: %s' % (users_dict[str(node['name'])]['isis'],
-                                                                             users_dict[str(node['name'])]['screen_name'],
+        'label': 'screen name: %s | isis group: %s | following count: %s' % (users_dict[str(node['name'])]['screen_name'],
+                                                                             users_dict[str(node['name'])]['isis'],
                                                                              users_dict[str(node['name'])]['following_count']),
         })
 
