@@ -19,10 +19,10 @@ def after_request(response):
 class Graph(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('clusters', type=list, location='json')
-    with open('miserables.json') as f:
+    with open('analysis/sample3.json') as f:
         data = json.load(f)
     nodes = data['nodes']
-    links = data['links']
+    edges = data['edges']
 
     def get(self):
         groups = set()
@@ -31,31 +31,31 @@ class Graph(Resource):
         return {'groups': list(groups)}  # Returns the available groups
 
     def put(self):
-        args = self.parser.parse_args()
-        groups = args['clusters']
-        filtered_nodes = []
-        filtered_links = []
-        translate = {}
-        ids = set()
-        nodes = self.nodes[:]
-        for i, node in enumerate(nodes):
-            if node['group'] in groups:
-                filtered_nodes.append(node)
-                translate[i] = (len(filtered_nodes)-1)  # to translate the current array references to new ones
-                ids.add(i)
-
-        links = self.links[:]
-        for link in links:
-            if link['source'] in ids and link['target'] in ids:
-                link['source'] = translate[link['source']]  # translate the array references
-                link['target'] = translate[link['target']]
-                filtered_links.append(link)
-
-        response = {'data': {
-            'nodes': filtered_nodes,
-            'links': filtered_links
-        }}
-        return response  # Returns the filtered graph data
+        # args = self.parser.parse_args()
+        # groups = args['clusters']
+        # filtered_nodes = []
+        # filtered_links = []
+        # translate = {}
+        # ids = set()
+        # nodes = self.nodes[:]
+        # for i, node in enumerate(nodes):
+        #     if node['group'] in groups:
+        #         filtered_nodes.append(node)
+        #         translate[i] = (len(filtered_nodes)-1)  # to translate the current array references to new ones
+        #         ids.add(i)
+        #
+        # links = self.links[:]
+        # for link in links:
+        #     if link['source'] in ids and link['target'] in ids:
+        #         link['source'] = translate[link['source']]  # translate the array references
+        #         link['target'] = translate[link['target']]
+        #         filtered_links.append(link)
+        #
+        # response = {'data': {
+        #     'nodes': filtered_nodes,
+        #     'links': filtered_links
+        # }}
+        return self.data  # Returns the filtered graph data
 
 
 
