@@ -5,20 +5,22 @@ import numpy as np
 import pymongo
 import sys
 
-conf = SparkConf().setAppName('jaccard.py').setMaster('local')
-sc = SparkContext(conf=conf)
+#conf = SparkConf().setAppName('jaccard.py').setMaster('local')
 
-conn = pymongo.MongoClient()
+#sc = SparkContext(conf=conf)
+
+conn = pymongo.MongoClient()#(host='169.53.140.164', port='27017;)
 link = conn.network.link_analysis
 
-pipeline = [
-            {"$project": { "_id":1 , "tags": 1} },
-           ]
+results =[]
+import json
+fname =open('sample_users_hashtags.json')
+user_sample = json.load(fname)
+#for user_id in user_sample:
+#    user = link.find({"_id": user_id}):
+#    results.append({"_id": user['_id'], "tags": user['tags']})
 
-query_tags = link.aggregate(pipeline, allowDiskUse=True)
-
-results = query_tags['result']
-
+results = user_sample['sample'][:1000]
 results = sc.parallelize(results)
 
 def normalizeTags(user):
@@ -50,9 +52,13 @@ def keyOnFirstUser(user_pair, jaccard_sim_data):
     (user1_id, user2_id) = user_pair
     return user1_id, (user2_id, jaccard_sim_data)
 
-def sortDistances(user, users_and_sims):
+def sortDistances(user, users_and_sims, k):
     users_and_sims.sort(key=itemgetter(1),reverse=True)
-    return user, users_and_sims
+    return user, users_and_sims[:k]
+
+def setNodeEdge(user):
+    return [{'src': user[0], 'dest': v[0]} for v in user[1]]
+
 
 
 results = results.map(lambda x: normalizeTags(x))
@@ -69,6 +75,9 @@ pairwise_users = hashtag_user_pairs.filter(
 
 jaccard_sim = pairwise_users.map(lambda x: jaccardSim(x[0],x[1])).map(
                                  lambda x: keyOnFirstUser(x[0],x[1])).groupByKey().map(
-                                 lambda x: sortDistances(x[0], list(x[1])))
+                                 lambda x: sortDistances(x[0], list(x[1]), 10 ) )
+#                                 lambda x: {"src": x[0], "dest": x[1][0], "sim": x[1][1]})
 
-jaccard_sim.saveAsTextFile('jaccard_sim_hashtags')
+jaccard_sim_knn = jaccard_sim.map(setNodeEdge).flatMap(lambda x: x)
+
+jaccard_sim_knn.saveAsTextFile('jaccard_sim_knn.json')
