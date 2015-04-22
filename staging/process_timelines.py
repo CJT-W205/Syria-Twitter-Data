@@ -53,7 +53,8 @@ def process_tweet(tweet):
                 'place': tweet['place'],
                 'lang': tweet['lang'],
                 'geo': tweet['geo'],
-                'created_at': datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y'),
+                'created_at': datetime.datetime.strptime(tweet['created_at'],\
+                                               '%a %b %d %H:%M:%S +0000 %Y'),
 
           }
 
@@ -69,9 +70,11 @@ def process_user(user):
                 'followers_count': user['followers_count'],
                 'location': user['location'],
                 'time_zone': user['time_zone'],
-                'created_at': datetime.datetime.strptime(user['created_at'], '%a %b %d %H:%M:%S +0000 %Y'),
+                'created_at': datetime.datetime.strptime(user['created_at'],\
+                                              '%a %b %d %H:%M:%S +0000 %Y'),
                 'url': user['url'],
                 'desc': user['description']
+
 
             }
 
@@ -123,11 +126,3 @@ for tl in timelines.find():
             insert_user_to_mongo(user_doc)
 
             insert_text_to_mongo(tl['_id'], text)
-
-
-
-
-#pro = [u'دولة_الخلافة#',u'الدولة_الإسلامية#',u'ولاية_الانبار#','الدولة_الاسلامية_في_العراق_و_الشام#']
-
-
-#ati = [u'دواعش#',u'داعش#‎',u'داعشي#',]
