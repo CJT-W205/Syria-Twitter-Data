@@ -31,10 +31,12 @@ class Graph(Resource):
     def put(self):
         args = self.parser.parse_args()
         print args
-        # {'hashtags': [u'hashtag1', u'hashtag2', u'hashtag3'], 'min_followers': 500, 'isis_group': [u'pro', u'anti', u'neutral', u'eng']}
+        # {'hashtags': [u'hashtag1', u'hashtag2', u'hashtag3'], 'min_followers': 500,
+        # 'isis_group': [u'pro', u'anti', u'neutral', u'eng']}
 
-        # We need to use these args to query Mongo to return a filtered set of nodes and edges, in the format provided in sample3.json
-        # Note that in addition to the existing json attributes in sample3.json, we need to add these filter categories too, obviously!
+        # We need to use these args to query Mongo to return a filtered set of nodes and edges, in the format provided
+        # in sample3.json (see also sample_transform.py for things like colors used etc. Note that in addition to the
+        # existing json attributes in sample3.json, we need to add these filter categories too, obviously!
 
         return self.data  # Returns the filtered graph data
 
