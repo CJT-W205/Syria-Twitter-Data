@@ -58,10 +58,53 @@ class Graph(Resource):
         return self.data  # Returns the filtered graph data
 
 
+class UserDetails(Resource):
+
+    def get(self, id):
+        return {'data': 'data'}
+
+
+class FilterLists(Resource):
+    @staticmethod
+    def get():
+        filters = {
+            'hashtagOptions': [
+                'hashtag1',
+                'hashtag2',
+                'hashtag3',
+                'hashtag4',
+                'hashtag5',
+                'hashtag6',
+                'hashtag7',
+                'hashtag8',
+                'hashtag9',
+                'hashtag10'
+            ],
+            'hashtagSelected': [
+                'hashtag1',
+                'hashtag2',
+                'hashtag3'
+            ],
+            'groupOptions':[
+                'pro',
+                'anti',
+                'neutral',
+                'eng'
+            ],
+            'groupSelected':[
+                'pro',
+                'anti',
+                'neutral',
+                'eng'
+            ]
+        }
+        return filters
 
 
 # API ROUTING
 api.add_resource(Graph, '/graph')
+api.add_resource(UserDetails, '/user-details/<int:id>')
+api.add_resource(FilterLists, '/filter-lists')
 
 
 if __name__ == "__main__":
