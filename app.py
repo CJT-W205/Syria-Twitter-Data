@@ -18,94 +18,48 @@ def after_request(response):
 
 class Graph(Resource):
     parser = reqparse.RequestParser()
-    parser.add_argument('clusters', type=list, location='json')
+    parser.add_argument('min_followers', type=int, required=True)
+    parser.add_argument('hashtags', type=list, location='json', required=True)
+    parser.add_argument('isis_group', type=list, location='json', required=True)
+
+    # Temporararily getting data from sample3.json
     with open('analysis/sample3.json') as f:
         data = json.load(f)
     nodes = data['nodes']
     edges = data['edges']
 
-    def get(self):
-        groups = set()
-        for node in self.nodes:
-            groups.add(node['group'])
-        return {'groups': list(groups)}  # Returns the available groups
-
     def put(self):
-        # args = self.parser.parse_args()
-        # groups = args['clusters']
-        # filtered_nodes = []
-        # filtered_links = []
-        # translate = {}
-        # ids = set()
-        # nodes = self.nodes[:]
-        # for i, node in enumerate(nodes):
-        #     if node['group'] in groups:
-        #         filtered_nodes.append(node)
-        #         translate[i] = (len(filtered_nodes)-1)  # to translate the current array references to new ones
-        #         ids.add(i)
-        #
-        # links = self.links[:]
-        # for link in links:
-        #     if link['source'] in ids and link['target'] in ids:
-        #         link['source'] = translate[link['source']]  # translate the array references
-        #         link['target'] = translate[link['target']]
-        #         filtered_links.append(link)
-        #
-        # response = {'data': {
-        #     'nodes': filtered_nodes,
-        #     'links': filtered_links
-        # }}
+        args = self.parser.parse_args()
+        print args
+        # {'hashtags': [u'hashtag1', u'hashtag2', u'hashtag3'], 'min_followers': 500,
+        # 'isis_group': [u'pro', u'anti', u'neutral', u'eng']}
+
+        # We need to use these args to query Mongo to return a filtered set of nodes and edges, in the format provided
+        # in sample3.json (see also sample_transform.py for things like colors used etc. Note that in addition to the
+        # existing json attributes in sample3.json, we need to add these filter categories too, obviously!
+
         return self.data  # Returns the filtered graph data
 
 
 class UserDetails(Resource):
 
-    def get(self, id):
-        return {'data': 'data'}
-
-
-class FilterLists(Resource):
     @staticmethod
-    def get():
-        filters = {
-            'hashtagOptions': [
-                'hashtag1',
-                'hashtag2',
-                'hashtag3',
-                'hashtag4',
-                'hashtag5',
-                'hashtag6',
-                'hashtag7',
-                'hashtag8',
-                'hashtag9',
-                'hashtag10'
-            ],
-            'hashtagSelected': [
-                'hashtag1',
-                'hashtag2',
-                'hashtag3'
-            ],
-            'groupOptions':[
-                'pro',
-                'anti',
-                'neutral',
-                'eng'
-            ],
-            'groupSelected':[
-                'pro',
-                'anti',
-                'neutral',
-                'eng'
-            ]
-        }
-        return filters
+    def get(id):
+        print id
+
+        # This API method is to return whatever individual user data we want to show
+        # When a node in the graph is clicked on, this API method will be called, and be provided the node/user id as
+        # a parameter, to be used in querying to get the response
+        # We need to decide if we want to just show user characteristics, recent tweets from the timeline, or something
+        # else...
+
+        return {'response': 'this is just a placeholder for the user data'}
+
 
 
 # API ROUTING
 api.add_resource(Graph, '/graph')
 api.add_resource(UserDetails, '/user-details/<int:id>')
-api.add_resource(FilterLists, '/filter-lists')
-
 
 if __name__ == "__main__":
     runner.run()
