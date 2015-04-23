@@ -68,6 +68,7 @@ def process_user(user):
                 'name': user['name'],
                 'following_count': user['friends_count'],
                 'followers_count': user['followers_count'],
+                'favourites_count': user['favourites_count'],
                 'location': user['location'],
                 'time_zone': user['time_zone'],
                 'created_at': datetime.datetime.strptime(user['created_at'],\
@@ -99,8 +100,9 @@ for tl in timelines.find():
     if len(tl['timeline'])>0:
         tweet = tl['timeline'][0]
 
-        if not entities.find_one({'_id': tweet['user']['id']}):
-
+        if not link.find_one({'_id': tweet['user']['id']}):
+            print tweet['user']['screen_name']
+            
             for tweet in tl['timeline']:
 
                 doc = process_tweet(tweet)
