@@ -39,11 +39,15 @@ try:
 
     analysis.create_index([("id", pymongo.ASCENDING)], unique=True)
 
-    tweets = itertools.chain(read(search), read(stream))
-    try:
-        client['analysis']['tweets'].insert(map(transform, tweets), continue_on_error=True)
-    except pymongo.errors.DuplicateKeyError:
-        pass
+    for source in [search, stream]:
+        if source.count() > 0:
+            try:
+                tweets = read(source)
+                client['analysis']['tweets'].insert(map(transform, tweets), continue_on_error=True)
+            except pymongo.errors.DuplicateKeyError:
+                pass
+            finally:
+                tweets.close()
 
 finally:
     client.close()
