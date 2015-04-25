@@ -5,23 +5,12 @@ from pyspark import SparkContext, SparkConf
 import json
 import sys
 
-#conf = SparkConf().setAppName('cosSim')
-#sc = SparkContext(conf=conf)
+conf = SparkConf().setAppName('cosSim')
+sc = SparkContext(conf=conf)
 
 file = open('retweet_sim_analysis.json')
 results = json.load(file)
-rdd = sc.parallelize(results[:10000])
-
-user_dict = {}
-
-def user_index(user_dict, user):
-  	if user not in user_dict:
-  	 	 user_index = len(user_dict)
-  		 user_dict[user] = user_index
-  		 return user_index
-  	else:
-  		 return user_dict[user]
-
+rdd = sc.parallelize(results)
 
 def mapDocs(user):
     doc = []
@@ -34,7 +23,6 @@ normalizer1 = Normalizer()
 def cosineSimilarity(tupl):
     x,y=tupl
     return (x[0], y[0], x[1].dot(y[1]))
-
 
 def setNodeEdge(user):
     return {'source': user[0], 'target': user[1], 'weight': user[2]}
@@ -53,6 +41,5 @@ userUserVec = userTfIdf.cartesian(userTfIdf).filter(lambda x: x[0][0]>x[1][0])
 cosine_sim = userUserVec.map(lambda x: cosineSimilarity(x)).filter(
                       lambda x: x[2] > 0.0).map(
                       lambda x: setNodeEdge(x))
-
 
 cosine_sim.saveAsTextFile('cosine_sim_knn')
