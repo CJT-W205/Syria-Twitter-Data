@@ -2,16 +2,17 @@
 # -*- coding: utf-8 -*-
 
 
-import itertools
 import pymongo
 import datetime
 
 
-def transform(tweet):
-    tweet['created_at'] = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
-    entities = tweet.pop('entities', None)
-    tweet['hashtags'] = [hashtag['text'] for hashtag in entities['hashtags']]
-    return tweet
+def transform(tweets):
+    for tweet in tweets:
+        if 'created_at' in tweet and 'entities' in tweet:
+            tweet['created_at'] = datetime.datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
+            entities = tweet.pop('entities', None)
+            tweet['hashtags'] = [hashtag['text'] for hashtag in entities['hashtags']]
+            yield tweet
 
 
 def read(collection):
@@ -43,7 +44,7 @@ try:
         if source.count() > 0:
             try:
                 tweets = read(source)
-                client['analysis']['tweets'].insert(map(transform, tweets), continue_on_error=True)
+                analysis.insert(transform(tweets), continue_on_error=True)
             except pymongo.errors.DuplicateKeyError:
                 pass
             finally:
