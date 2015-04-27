@@ -2,6 +2,9 @@ from flask import Flask
 from flask.ext.restful import Api, Resource, reqparse
 from flask.ext.runner import Runner
 import json
+import pymongo
+import bson.json_util
+
 
 app = Flask(__name__)
 runner = Runner(app)
@@ -45,7 +48,6 @@ class UserDetails(Resource):
 
     @staticmethod
     def get(id):
-        print id
 
         # This API method is to return whatever individual user data we want to show
         # When a node in the graph is clicked on, this API method will be called, and be provided the node/user id as
@@ -53,13 +55,17 @@ class UserDetails(Resource):
         # We need to decide if we want to just show user characteristics, recent tweets from the timeline, or something
         # else...
 
-        return {'response': 'this is just a placeholder for the user data'}
+        result = mongo['stage']['views'].find({'_id': id})
+        return json.loads(bson.json_util.dumps(result))
 
 
 
 # API ROUTING
 api.add_resource(Graph, '/graph')
 api.add_resource(UserDetails, '/user-details/<int:id>')
+
+# MongoDB
+mongo = pymongo.MongoClient(host="169.53.140.164", port=27017)
 
 if __name__ == "__main__":
     runner.run()
