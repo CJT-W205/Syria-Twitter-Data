@@ -33,6 +33,25 @@ def ingest():
         client.close()
 
 
-if __name__ == "__main__":
-    ingest()
+def update_coordinates():
+    client = pymongo.MongoClient()
+    try:
+        staging = client['stage']
+        staging['nodes'].create_index([
+            ('id', pymongo.ASCENDING)])
+        updates = read_json('nodes_coordinates.json')
+        for update in updates['nodes']:
+            staging['nodes'].update(
+                {'id': update['id']},
+                {'$set': {
+                    'x': update['x'],
+                    'y': update['y']
+                }},
+            )
+    finally:
+        client.close()
 
+
+#if __name__ == "__main__":
+#    ingest()
+#    update_coordinates()
