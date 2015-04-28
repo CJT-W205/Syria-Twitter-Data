@@ -24,9 +24,13 @@ def ingest():
         staging = client['stage']
 
         staging.drop_collection('nodes')
+        # ensure index
+        staging['nodes'].create_index([('id', pymongo.ASCENDING)])
+        staging['nodes'].create_index([('sentiment', pymongo.ASCENDING), ('num_followers', pymongo.ASCENDING)])
         staging['nodes'].insert(map(inject_color, read_json('nodes.json')['nodes']))
 
         staging.drop_collection('edges')
+        staging['edges'].create_index([('source', pymongo.ASCENDING), ('target', pymongo.ASCENDING)])
         staging['edges'].insert(read_json('edges.json'))
 
     finally:
@@ -37,8 +41,8 @@ def update_coordinates():
     client = pymongo.MongoClient()
     try:
         staging = client['stage']
-        staging['nodes'].create_index([
-            ('id', pymongo.ASCENDING)])
+        # ensure index
+        staging['nodes'].create_index([('id', pymongo.ASCENDING)])
         updates = read_json('nodes_coordinates.json')
         for update in updates['nodes']:
             staging['nodes'].update(
@@ -52,6 +56,6 @@ def update_coordinates():
         client.close()
 
 
-#if __name__ == "__main__":
-#    ingest()
-#    update_coordinates()
+if __name__ == "__main__":
+    ingest()
+    update_coordinates()
