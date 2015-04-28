@@ -62,6 +62,7 @@ class Graph(Resource):
     @staticmethod
     def node_scrub(node, index):
         node['id'] = str(node['id'])
+        node['size'] = 0.01
         return node
 
     @staticmethod
