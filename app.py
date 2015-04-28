@@ -42,9 +42,13 @@ class Graph(Resource):
         # in sample3.json (see also sample_transform.py for things like colors used etc. Note that in addition to the
         # existing json attributes in sample3.json, we need to add these filter categories too, obviously!
         nodes = mongo['stage']['nodes'].find(
-            {'sentiment': {'$in': args['isis_group']}},
+            {'$and': [
+                {'sentiment': {'$in': args['isis_group']}},
+                # {'tags': {'$in': args['hashtags']}},
+                {'followers_count': {'$gte': args['min_followers']}}
+            ]},
             {'_id': 0})
-        nodes = [node for node in nodes]
+        nodes = [self.node_scrub(node) for node in nodes]
 
         nodes_id = list(set([str(node['id']) for node in nodes]))
 
@@ -57,6 +61,13 @@ class Graph(Resource):
 
         result = {'nodes': nodes, 'edges': edges}
         return result
+
+    def node_scrub(self, node):
+        node['id'] = str(node['id'])
+        return node
+
+    def edge_scrub(self, edge):
+        return edge
 
 
 class UserDetails(Resource):
