@@ -4,6 +4,7 @@ from flask.ext.runner import Runner
 import json
 import pymongo
 import bson.json_util
+import bson
 
 
 app = Flask(__name__)
@@ -25,11 +26,11 @@ class Graph(Resource):
     parser.add_argument('hashtags', type=list, location='json', required=True)
     parser.add_argument('isis_group', type=list, location='json', required=True)
 
-    # Temporararily getting data from sample3.json
-    with open('analysis/sample3.json') as f:
-        data = json.load(f)
-    nodes = data['nodes']
-    edges = data['edges']
+    # # Temporarily getting data from sample3.json
+    # with open('analysis/sample3.json') as f:
+    #     data = json.load(f)
+    # nodes = data['nodes']
+    # edges = data['edges']
 
     def put(self):
         args = self.parser.parse_args()
@@ -40,8 +41,22 @@ class Graph(Resource):
         # We need to use these args to query Mongo to return a filtered set of nodes and edges, in the format provided
         # in sample3.json (see also sample_transform.py for things like colors used etc. Note that in addition to the
         # existing json attributes in sample3.json, we need to add these filter categories too, obviously!
+        nodes = mongo['stage']['nodes'].find(
+            {'sentiment': {'$in': args['isis_group']}},
+            {'_id': 0})
+        nodes = [node for node in nodes]
 
-        return self.data  # Returns the filtered graph data
+        nodes_id = list(set([str(node['id']) for node in nodes]))
+
+        edges = mongo['stage']['edges'].find(
+            {'$and': [
+                {'source': {'$in': nodes_id}},
+                {'target': {'$in': nodes_id}}]},
+            {'_id': 0})
+        edges = [edge for edge in edges]
+
+        result = {'nodes': nodes, 'edges': edges}
+        return result
 
 
 class UserDetails(Resource):
@@ -55,9 +70,15 @@ class UserDetails(Resource):
         # We need to decide if we want to just show user characteristics, recent tweets from the timeline, or something
         # else...
 
-        result = mongo['stage']['views'].find({'_id': id})
-        return json.loads(bson.json_util.dumps(result))
+        result = mongo['stage']['views'].find(
+            {'_id': id},
+            {'_id', 0})
+        return result #mongo_convert(result)
 
+
+def mongo_convert(o):
+    # need more efficient way of doing this...
+    json.loads(bson.json_util.dumps(o))
 
 
 # API ROUTING
@@ -65,7 +86,7 @@ api.add_resource(Graph, '/graph')
 api.add_resource(UserDetails, '/user-details/<int:id>')
 
 # MongoDB
-mongo = pymongo.MongoClient(host="169.53.140.164", port=27017)
+mongo = pymongo.MongoClient(host="localhost", port=27017)
 
 if __name__ == "__main__":
     runner.run()
