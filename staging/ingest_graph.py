@@ -25,7 +25,7 @@ def ingest():
 
         staging.drop_collection('nodes')
         # ensure index
-        staging['nodes'].create_index([('id', pymongo.ASCENDING)])
+        staging['nodes'].create_index('id')
         staging['nodes'].create_index([('sentiment', pymongo.ASCENDING), ('num_followers', pymongo.ASCENDING)])
         staging['nodes'].insert(map(inject_color, read_json('nodes.json')['nodes']))
 
@@ -42,7 +42,7 @@ def update_coordinates():
     try:
         staging = client['stage']
         # ensure index
-        staging['nodes'].create_index([('id', pymongo.ASCENDING)])
+        staging['nodes'].create_index('id')
         updates = read_json('nodes_coordinates.json')
         for update in updates['nodes']:
             staging['nodes'].update(
