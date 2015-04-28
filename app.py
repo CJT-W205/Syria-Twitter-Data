@@ -48,25 +48,28 @@ class Graph(Resource):
                 {'followers_count': {'$gte': args['min_followers']}}
             ]},
             {'_id': 0})
-        nodes = [self.node_scrub(node) for node in nodes]
+        nodes = [self.node_scrub(node, index) for index, node in enumerate(nodes)]
 
-        nodes_id = list(set([str(node['id']) for node in nodes]))
+        nodes_id = list(set([node['id'] for node in nodes]))
 
         edges = mongo['stage']['edges'].find(
             {'$and': [
                 {'source': {'$in': nodes_id}},
                 {'target': {'$in': nodes_id}}]},
             {'_id': 0})
-        edges = [edge for edge in edges]
+        edges = [self.edge_scrub(edge, index) for index, edge in enumerate(edges)]
 
         result = {'nodes': nodes, 'edges': edges}
         return result
 
-    def node_scrub(self, node):
+    @staticmethod
+    def node_scrub(node, index):
         node['id'] = str(node['id'])
         return node
 
-    def edge_scrub(self, edge):
+    @staticmethod
+    def edge_scrub(edge, index):
+        edge['id'] = index
         return edge
 
 
