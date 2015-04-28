@@ -26,17 +26,8 @@ class Graph(Resource):
     parser.add_argument('hashtags', type=list, location='json', required=True)
     parser.add_argument('isis_group', type=list, location='json', required=True)
 
-    # # Temporarily getting data from sample3.json
-    # with open('analysis/sample3.json') as f:
-    #     data = json.load(f)
-    # nodes = data['nodes']
-    # edges = data['edges']
-
     def put(self):
         args = self.parser.parse_args()
-        print args
-        # {'hashtags': [u'hashtag1', u'hashtag2', u'hashtag3'], 'min_followers': 500,
-        # 'isis_group': [u'pro', u'anti', u'neutral', u'eng']}
 
         nodes = mongo['stage']['nodes'].find(
             {'$and': [
@@ -75,22 +66,8 @@ class UserDetails(Resource):
 
     @staticmethod
     def get(id):
-
-        # This API method is to return whatever individual user data we want to show
-        # When a node in the graph is clicked on, this API method will be called, and be provided the node/user id as
-        # a parameter, to be used in querying to get the response
-        # We need to decide if we want to just show user characteristics, recent tweets from the timeline, or something
-        # else...
-
-        result = mongo['stage']['views'].find(
-            {'_id': id},
-            {'_id', 0})
-        return result #mongo_convert(result)
-
-
-def mongo_convert(o):
-    # need more efficient way of doing this...
-    json.loads(bson.json_util.dumps(o))
+        result = mongo['stage']['views'].find({'_id': id})
+        return json.loads(bson.json_util.dumps(result))
 
 
 # API ROUTING
