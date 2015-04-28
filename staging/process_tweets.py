@@ -30,28 +30,29 @@ def read(collection):
         })
 
 
-client = pymongo.MongoClient()
-try:
-    client['analysis'].drop_collection('tweets')
+def process_tweets():
+    client = pymongo.MongoClient()
+    try:
+        client['stage'].drop_collection('tweets')
 
-    analysis = client['analysis']['tweets']
-    search = client['search']['tweets']
-    stream = client['stream']['tweets']
+        analysis = client['stage']['tweets']
+        search = client['search']['tweets']
+        stream = client['stream']['tweets']
 
-    analysis.create_index([("id", pymongo.ASCENDING)], unique=True)
+        analysis.create_index([("id", pymongo.ASCENDING)], unique=True)
 
-    for source in [search, stream]:
-        if source.count() > 0:
-            try:
-                tweets = read(source)
-                analysis.insert(transform(tweets), continue_on_error=True)
-            except pymongo.errors.DuplicateKeyError:
-                pass
-            finally:
-                tweets.close()
-
-finally:
-    client.close()
-
+        for source in [search, stream]:
+            if source.count() > 0:
+                try:
+                    tweets = read(source)
+                    analysis.insert(transform(tweets), continue_on_error=True)
+                except pymongo.errors.DuplicateKeyError:
+                    pass
+                finally:
+                    tweets.close()
+    finally:
+        client.close()
 
 
+if __name__ == "__main__":
+    process_tweets()
