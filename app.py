@@ -38,9 +38,6 @@ class Graph(Resource):
         # {'hashtags': [u'hashtag1', u'hashtag2', u'hashtag3'], 'min_followers': 500,
         # 'isis_group': [u'pro', u'anti', u'neutral', u'eng']}
 
-        # We need to use these args to query Mongo to return a filtered set of nodes and edges, in the format provided
-        # in sample3.json (see also sample_transform.py for things like colors used etc. Note that in addition to the
-        # existing json attributes in sample3.json, we need to add these filter categories too, obviously!
         nodes = mongo['stage']['nodes'].find(
             {'$and': [
                 {'sentiment': {'$in': args['isis_group']}},
