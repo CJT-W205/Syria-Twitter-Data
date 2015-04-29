@@ -13,7 +13,8 @@ def read_json(json_file):
         return json.load(json_reader)
 
 
-def inject_color(node):
+def node_scrub(node):
+    node['id'] = str(node['id'])
     node['color'] = colors[node['group'] - 1]
     return node
 
@@ -27,7 +28,7 @@ def ingest():
         # ensure index
         staging['nodes'].create_index('id')
         staging['nodes'].create_index([('sentiment', pymongo.ASCENDING), ('num_followers', pymongo.ASCENDING)])
-        staging['nodes'].insert(map(inject_color, read_json('nodes.json')['nodes']))
+        staging['nodes'].insert(map(node_scrub, read_json('nodes.json')['nodes']))
 
         staging.drop_collection('edges')
         staging['edges'].create_index([('source', pymongo.ASCENDING), ('target', pymongo.ASCENDING)])
