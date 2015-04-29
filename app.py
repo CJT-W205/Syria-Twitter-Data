@@ -54,6 +54,7 @@ class Graph(Resource):
     def node_scrub(node, index):
         node['id'] = str(node['id'])
         node['size'] = 0.01
+        node['label'] = node['id']
         return node
 
     @staticmethod
@@ -75,7 +76,7 @@ api.add_resource(Graph, '/graph')
 api.add_resource(UserDetails, '/user-details/<int:id>')
 
 # MongoDB
-mongo = pymongo.MongoClient(host="localhost", port=27017)
+mongo = pymongo.MongoClient(host="169.53.140.164", port=27017)
 
 if __name__ == "__main__":
     runner.run()
