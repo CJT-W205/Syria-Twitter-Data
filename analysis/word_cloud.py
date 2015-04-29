@@ -12,19 +12,53 @@ import wordcloud
 import arabic_reshaper
 from bidi.algorithm import get_display
 from unicodedata import bidirectional
+import bson
+import pymongo
+
+
+mongo_count_reducer = """
+    function (key, values) {
+        var total = 0;
+        for (var i = 0; i < values.length; i++) {
+            total += values[i];
+        }
+        return total;
+    }
+"""
+
+mongo_hashtag_mapper = """
+    function () {
+        this.tags.forEach(function(pair) {
+            emit(pair[0], pair[1]);
+        });
+    }
+"""
+
+count_reducer = bson.code.Code(mongo_count_reducer)
+hashtag_mapper = bson.code.Code(mongo_hashtag_mapper)
+
+
+def count_hashtags():
+    mongo = pymongo.MongoClient(host="169.53.140.164")
+    collection = mongo['stage']['link_analysis']
+    collection.map_reduce(hashtag_mapper, count_reducer, "hashtag_counts")
+    counts_mr = mongo['stage']['hashtag_counts']
+    counts_mr.create_index([('value', pymongo.DESCENDING)])
+    counts = counts_mr\
+        .find({}, {'value': 1})\
+        .sort('value', -1).limit(256)
+    counts = map(lambda count: (count['_id'], int(count['value'])), counts)
+    cloud(counts, "counts")
+
 
 def cloud(counts, basename):
 
     name = basename + ".png"
 
-    count_max = counts.most_common()[0][1]
-    if count_max == 0:
-        return
-
-    # NOTE: font_path is OS X specific
-    wc = wordcloud.WordCloud(font_path='/Library/Fonts/Arial.ttf',
-                             width=800, height=400)
-    wc.fit_words(map(order_and_shape, filter(bad_unicode, counts.most_common(256))))
+    wc = wordcloud.WordCloud(
+        font_path='/Library/Fonts/Arial.ttf',  # NOTE: font_path is OS X specific
+         width=800, height=400)
+    wc.fit_words(map(order_and_shape, filter(bad_unicode, counts)))
     wc.to_file(name)
     return name
 
@@ -35,6 +69,7 @@ def order_and_shape(wc):
 
 def bad_unicode(wc):
     w = wc[0]
+    # w = wc[u'_id']
     if not isinstance(w, unicode):
         w = unicode(w)
     prev_surrogate = False
@@ -48,3 +83,6 @@ def bad_unicode(wc):
         if bidirectional(_ch) == '':
             return False
     return True
+
+if __name__ == "__main__":
+    count_hashtags()
