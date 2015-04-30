@@ -71,6 +71,7 @@ def cloud_image(counts, width=800, height=400, background_color='black'):
             width=width, height=height, background_color=background_color)
     else:
         wc = wordcloud.WordCloud(
+            font_path='/usr/share/fonts/truetype/msttcorefonts/Arial.ttf',
             width=width, height=height, background_color=background_color)
     wc.fit_words(map(order_and_shape, filter(bad_unicode, counts)))
     return wc.to_image()
