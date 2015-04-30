@@ -10,13 +10,22 @@
 import sys
 import wordcloud
 import arabic_reshaper
-from bidi.algorithm import get_display
-from unicodedata import bidirectional
+import bidi.algorithm
+import unicodedata
 import bson
+import bson.son
 import pymongo
 
 
-mongo_count_reducer = """
+hashtag_count_mapper_source = """
+    function () {
+        this.tags.forEach(function(tags) {
+            tags(pair[0], tags[1]);
+        });
+    }
+"""
+
+hashtag_reducer_source = """
     function (key, values) {
         var total = 0;
         for (var i = 0; i < values.length; i++) {
@@ -26,50 +35,57 @@ mongo_count_reducer = """
     }
 """
 
-mongo_hashtag_mapper = """
-    function () {
-        this.tags.forEach(function(pair) {
-            emit(pair[0], pair[1]);
-        });
-    }
-"""
+hashtag_count_mapper = bson.code.Code(hashtag_count_mapper_source)
+hashtag_reducer = bson.code.Code(hashtag_reducer_source)
 
-count_reducer = bson.code.Code(mongo_count_reducer)
-hashtag_mapper = bson.code.Code(mongo_hashtag_mapper)
-
-
-def count_hashtags():
+def count_hashtags_linkanalysis():
     mongo = pymongo.MongoClient(host="169.53.140.164")
     collection = mongo['stage']['link_analysis']
-    collection.map_reduce(hashtag_mapper, count_reducer, "hashtag_counts")
+    collection.map_reduce(hashtag_count_mapper, hashtag_reducer, "hashtag_counts")
     counts_mr = mongo['stage']['hashtag_counts']
     counts_mr.create_index([('value', pymongo.DESCENDING)])
     counts = counts_mr\
         .find({}, {'value': 1})\
         .sort('value', -1).limit(256)
     counts = map(lambda count: (count['_id'], int(count['value'])), counts)
-    cloud(counts, "counts")
+    cloud_file(counts, "counts")
 
 
-def cloud(counts, basename):
+def count_hashtags(collection, query={}, limit=256):
+    counts = collection.aggregate(
+        pipeline=[
+            {"$match": query},
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+            {"$sort": bson.son.SON([("count", -1), ("_id", -1)])},
+            {"$limit": limit }
+        ]
+    )
+    return map(lambda count: (count['_id'], int(count['count'])), counts['result'])
 
-    name = basename + ".png"
 
-    wc = wordcloud.WordCloud(
-        font_path='/Library/Fonts/Arial.ttf',  # NOTE: font_path is OS X specific
-         width=800, height=400)
+def cloud_image(counts, width=800, height=400, background_color='black'):
+    if sys.platform == "darwin":
+        wc = wordcloud.WordCloud(
+            font_path='/Library/Fonts/Arial.ttf',  # NOTE: font_path is OS X specific
+            width=width, height=height, background_color=background_color)
+    else:
+        wc = wordcloud.WordCloud(
+            width=width, height=height, background_color=background_color)
     wc.fit_words(map(order_and_shape, filter(bad_unicode, counts)))
-    wc.to_file(name)
-    return name
+    return wc.to_image()
+
+
+def cloud_file(counts, basename, width=800, height=400, background_color='black'):
+    cloud_image(counts, width, height, background_color).save(basename + ".png")
 
 
 def order_and_shape(wc):
-    return get_display(arabic_reshaper.reshape(wc[0])), wc[1]
+    return bidi.algorithm.get_display(arabic_reshaper.reshape(wc[0])), wc[1]
 
 
 def bad_unicode(wc):
     w = wc[0]
-    # w = wc[u'_id']
     if not isinstance(w, unicode):
         w = unicode(w)
     prev_surrogate = False
@@ -80,9 +96,14 @@ def bad_unicode(wc):
         elif prev_surrogate:
             _ch = prev_surrogate + _ch
             prev_surrogate = False
-        if bidirectional(_ch) == '':
+        if unicodedata.bidirectional(_ch) == '':
             return False
     return True
 
+
 if __name__ == "__main__":
-    count_hashtags()
+    mongo = pymongo.MongoClient(host="169.53.140.164")
+    collection = mongo['stage']['nodes']
+    query = {"group": 9}
+    counts = count_hashtags(collection, query)
+    cloud_file(counts, "test")
