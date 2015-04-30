@@ -32,7 +32,8 @@ class Graph(Resource):
         nodes = mongo['stage']['nodes'].find(
             {'$and': [
                 {'sentiment': {'$in': args['isis_group']}},
-                # {'tags': {'$in': args['hashtags']}},
+                # {'tags': {'$in': args['hashtags']}}, # contains at least one (OR)
+                {'tags': {'$all': args['hashtags']}}, # contains all (AND)
                 {'followers_count': {'$gte': args['min_followers']}}
             ]},
             {'_id': 0})
