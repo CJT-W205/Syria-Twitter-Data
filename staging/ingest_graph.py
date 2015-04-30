@@ -27,7 +27,16 @@ def ingest():
         staging.drop_collection('nodes')
         # ensure index
         staging['nodes'].create_index('id')
-        staging['nodes'].create_index([('sentiment', pymongo.ASCENDING), ('num_followers', pymongo.ASCENDING)])
+        staging['nodes'].create_index([('sentiment', pymongo.HASHED)])
+        staging['nodes'].create_index([('group', pymongo.HASHED)])
+        staging['nodes'].create_index([('followers_count', pymongo.ASCENDING)])
+        staging['nodes'].create_index('tags')
+        staging['nodes'].create_index([
+            ('sentiment', pymongo.ASCENDING),
+            ('followers_count', pymongo.ASCENDING),
+            ('tags', pymongo.ASCENDING),
+            ('groups', pymongo.ASCENDING),
+            ])
         staging['nodes'].insert(map(node_scrub, read_json('nodes.json')['nodes']))
 
         staging.drop_collection('edges')
