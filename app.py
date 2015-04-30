@@ -156,9 +156,9 @@ class WordCloud(NodeResource):
         image.save(image_io, "png")
         image_io.seek(0)
         return send_file(image_io,
-                         mimetype='image/png',
-                         attachment_filename="cloud.png",
-                         as_attachment=True)
+                         # attachment_filename="cloud.png",
+                         # as_attachment=True,
+                         mimetype='image/png')
 
 
 class UserDetails(Resource):
