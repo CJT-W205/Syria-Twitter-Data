@@ -161,6 +161,17 @@ class WordCloud(NodeResource):
                          mimetype='image/png')
 
 
+class Hashtags(NodeResource):
+
+    def handle_request(self, node_query):
+
+        collection = mongo['stage']['nodes']
+
+        counts = analysis.word_cloud.count_hashtags(collection, node_query)
+
+        return {'hashtags': [count[0] for count in counts]}
+
+
 class UserDetails(Resource):
 
     @staticmethod
@@ -173,6 +184,7 @@ class UserDetails(Resource):
 api.add_resource(Graph, '/graph')
 api.add_resource(UserDetails, '/user-details/<int:id>')
 api.add_resource(WordCloud, '/word-cloud')
+api.add_resource(Hashtags, '/hashtags')
 
 # MongoDB
 mongo = pymongo.MongoClient(host="169.53.140.164", port=27017)
