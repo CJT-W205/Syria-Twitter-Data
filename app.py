@@ -15,6 +15,7 @@ app = Flask(__name__)
 runner = Runner(app)
 api = Api(app)
 
+
 # Enable CORS
 @app.after_request
 def after_request(response):
@@ -26,17 +27,17 @@ def after_request(response):
 
 class NodeResource(Resource):
 
-    kvpParser = reqparse.RequestParser()
-    kvpParser.add_argument('min_followers', type=int, location='args')
-    kvpParser.add_argument('hashtags', type=str, action='append', location='args')
-    kvpParser.add_argument('isis_group', type=str, action='append', location='args')
-    kvpParser.add_argument('group', type=str, action='append', location='args')
+    kvp = reqparse.RequestParser()
+    kvp.add_argument('min_followers', type=int, location='args')
+    kvp.add_argument('hashtags', type=str, action='append', location='args')
+    kvp.add_argument('isis_group', type=str, action='append', location='args')
+    kvp.add_argument('group', type=str, action='append', location='args')
 
-    jsonParser = reqparse.RequestParser()
-    jsonParser.add_argument('min_followers', type=int, location='json')
-    jsonParser.add_argument('hashtags', type=list, location='json')
-    jsonParser.add_argument('isis_group', type=list, location='json')
-    jsonParser.add_argument('group', type=list, location='json')
+    json = reqparse.RequestParser()
+    json.add_argument('min_followers', type=int, location='json')
+    json.add_argument('hashtags', type=list, location='json')
+    json.add_argument('isis_group', type=list, location='json')
+    json.add_argument('group', type=list, location='json')
 
     @staticmethod
     def node_query(args):
@@ -45,8 +46,7 @@ class NodeResource(Resource):
 
         tags = args.get('hashtags', None)
         if tags is not None and len(tags) > 0:
-            # and_clause.append({'tags': {'$all': tags}})
-            and_clause.append({'tags': {'$all': tags}})
+            and_clause.append({'tags': {'$in': tags}})
 
         follower_count = args.get('min_followers', None)
         if follower_count is not None:
@@ -87,18 +87,18 @@ class NodeResource(Resource):
             args[key] = list(set(value))
 
     def get(self):
-        args = self.kvpParser.parse_args()
+        args = self.kvp.parse_args()
         args = self.args_scrub(args)
         node_query = self.node_query(args)
         return self.handle_request(node_query)
 
     def put(self):
-        args = self.jsonParser.parse_args()
+        args = self.json.parse_args()
         node_query = self.node_query(args)
         return self.handle_request(node_query)
 
     def post(self):
-        args = self.jsonParser.parse_args()
+        args = self.json.parse_args()
         node_query = self.node_query(args)
         return self.handle_request(node_query)
 
@@ -126,7 +126,7 @@ class Graph(NodeResource):
                     {'source': {'$in': nodes_id}},
                     {'target': {'$in': nodes_id}}]},
                 {'_id': 0})
-            edges = [self.edge_scrub(edge, index) for index, edge in enumerate(edges)]
+            edges = [self.edge_scrub(e, i) for i, e in enumerate(edges)]
 
         return {'nodes': nodes, 'edges': edges}
 
