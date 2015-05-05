@@ -117,7 +117,7 @@ class Graph(NodeResource):
             edges = {}
         else:
             nodes = mongo['stage']['nodes'].find(node_query, {'_id': 0})
-            nodes = [self.node_scrub(node, index) for index, node in enumerate(nodes)]
+            nodes = [self.node_scrub(n, i) for i, n in enumerate(nodes)]
 
             nodes_id = list(set([node['id'] for node in nodes]))
 
