@@ -44,11 +44,8 @@ if __name__ == '__main__':
     with open('candidates.json') as f:
         candidate_dict = json.load(f)
 
-    track_terms = []
-    for candidate in candidate_dict.keys():
-        for term in candidate_dict[candidate]:
-            track_terms.append(term)
-    print track_terms
+    track = [u'دولة_الخلافة#',u'الدولة_الإسلامية#',u'داعش#‎',
+             u'جبهة_النصرة#',u'ولاية_الانبار#', '#ISIS', '#ISIL', '#IslamicState']
 
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--verbose", required=False, type=bool, default=False, help="Set verbose output")
