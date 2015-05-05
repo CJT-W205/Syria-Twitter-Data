@@ -58,7 +58,7 @@ def count_hashtags(collection, query={}, limit=256):
             {"$unwind": "$tags"},
             {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
             {"$sort": bson.son.SON([("count", -1), ("_id", -1)])},
-            {"$limit": limit }
+            {"$limit": limit}
         ]
     )
     return map(lambda count: (count['_id'], int(count['count'])), counts['result'])
